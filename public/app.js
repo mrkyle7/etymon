@@ -174,12 +174,35 @@
       }
       const at = game.over ? game : p.move;
       above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
-      above.push(svg('text', { class: 'ghost-word', x: at.x, y: Math.max(at.y - at.r - 1.2, -1), 'text-anchor': 'middle' },
-        game.over ? L.word : era[2]));
+      const word = game.over ? L.word : era[2];
+      const [wx, wy] = wordSpot(word, at, shown);
+      above.push(svg('text', { class: 'ghost-word', x: wx, y: wy, 'text-anchor': 'middle' }, word));
     }
     $('below').replaceChildren(...below);
     $('above').replaceChildren(...above);
     return p;
+  }
+
+  // Roughly where a label's text sits on the map: [left, top, right, bottom].
+  function textBox(x, y, text, size, anchor = 'middle') {
+    const w = text.length * size * 0.55;
+    const left = anchor === 'start' ? x : anchor === 'end' ? x - w : x - w / 2;
+    return [left, y - size * 0.8, left + w, y + size * 0.25];
+  }
+  const overlaps = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
+  // Where to write your word's spelling by its circle: above it, or below,
+  // left or right of it, wherever it doesn't cover a meaning's label.
+  function wordSpot(word, at, senses) {
+    const taken = senses.flatMap((l) => {
+      const anchor = l.x > 80 ? 'end' : l.x < 20 ? 'start' : 'middle';
+      return [textBox(l.x, l.y + 4.6, game.seen.includes(l.name) || game.over ? l.name : '?', 3.8, anchor), [l.x - 1.2, l.y - 1.2, l.x + 1.2, l.y + 1.2]];
+    });
+    const w = word.length * 4 * 0.55;
+    const spots = [
+      [at.x, at.y - at.r - 1.2], [at.x, at.y + at.r + 4], [at.x - at.r - w / 2 - 1, at.y + 1.4], [at.x + at.r + w / 2 + 1, at.y + 1.4],
+    ].filter(([x, y]) => y > -2 && y < 103 && x - w / 2 > -4 && x + w / 2 < 104);
+    return spots.find(([x, y]) => !taken.some((b) => overlaps(textBox(x, y, word, 4), b))) || spots[0] || [at.x, at.y];
   }
 
   // Where the i-th speaker stands in a circle: a sunflower that fills from
