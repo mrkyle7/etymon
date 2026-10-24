@@ -573,7 +573,7 @@
 
   return {
     LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, FAD, FAD_LIFE, REVEAL,
-    ARRIVAL_BONUS, START_SPEAKERS, ON_COURSE, ROUTES,
+    ARRIVAL_BONUS, START_SPEAKERS, ON_COURSE, ROUTES, GAIN,
     landmarks, senses, senseAt, newGame, eraOf, wantedNow, clueNow, scornedNow, scornClueNow, fadNow, goalKnown, constrain, preview, advance,
     reachedTarget, bestMove, grade, score, historyGame, perfectGame, faithful, chooseEnding,
   };

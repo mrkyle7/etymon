@@ -14,6 +14,7 @@
   let game;
   let ghost; // where you're thinking of drifting: { x, y, r }
   let people = []; // the crowd's dots, innermost first
+  let leftBehind = []; // dots who left you last century, standing where they went
   let replay = null; // { step, timer } while the replay plays
 
   function svg(tag, attrs = {}, text) {
@@ -81,6 +82,7 @@
     $('crowd').replaceChildren();
     $('floats').replaceChildren();
     people = [];
+    leftBehind = [];
     $('menu').hidden = true;
     $('game').hidden = false;
     $('game-word').textContent = level().word;
@@ -170,7 +172,14 @@
     if (last) {
       for (const name of last.wanted) {
         const l = E.senseAt(game, name);
-        below.push(svg('circle', { class: `verdict-wanted${last.senses.includes(name) ? ' hit' : ''}`, cx: l.x, cy: l.y, r: 2.6 }));
+        const hit = last.senses.includes(name);
+        below.push(svg('circle', { class: `verdict-wanted${hit ? ' hit' : ''}`, cx: l.x, cy: l.y, r: 2.6 }));
+        // The speakers it would have brought you, waiting round it.
+        const missed = hit ? 0 : Math.round(E.GAIN.needed / PER_PERSON);
+        for (let i = 0; i < missed; i++) {
+          const a = (i / missed) * 2 * Math.PI - Math.PI / 2;
+          below.push(svg('circle', { class: 'missed-person', cx: l.x + Math.cos(a) * 3.8, cy: l.y + Math.sin(a) * 3.8, r: 0.75 }));
+        }
       }
       for (const name of last.scorned) {
         const l = E.senseAt(game, name);
@@ -230,32 +239,45 @@
     return spots.find(([x, y]) => !taken.some((b) => overlaps(textBox(x, y, word, size), b))) || spots[0] || [at.x, at.y];
   }
 
-  // Where the i-th speaker stands in a circle: a sunflower that fills from
-  // the middle out, so a bigger crowd is a denser one.
-  function spot(i, at) {
+  // Where the i-th of n speakers stands in a circle: a sunflower spread over
+  // the whole circle, so a bigger crowd is a denser one.
+  function spot(i, at, n) {
     const a = i * 2.39996;
-    const d = at.r * 0.92 * Math.sqrt((i + 0.5) / CROWD_MAX);
+    const d = at.r * 0.9 * Math.sqrt((i + 0.5) / Math.max(n, 12));
     return [at.x + Math.cos(a) * d, at.y + Math.sin(a) * d];
+  }
+  // Somewhere between `from` and `to` away from a point, on the map.
+  function near(c, from, to) {
+    const a = Math.random() * 2 * Math.PI;
+    const d = from + Math.random() * (to - from);
+    return [Math.min(103, Math.max(-3, c.x + Math.cos(a) * d)), Math.min(103, Math.max(-3, c.y + Math.sin(a) * d))];
   }
   const moveTo = (dot, [x, y]) => { dot.style.transform = `translate(${x}px, ${y}px)`; };
 
-  // Bring the crowd up to date: those forgotten fade away, newcomers walk in
-  // from the senses that won them (`from`, a list of points).
-  function updateCrowd(lost = 0, from = []) {
+  // Bring the crowd up to date. Those who leave walk off to what lost them
+  // (`losses`: how many, and the sense that cost them, or none for those who
+  // just forgot you) and stand there in red until the next century passes.
+  // Newcomers walk in from the senses that won them (`from`, a list of points).
+  function updateCrowd(losses = [], from = []) {
+    for (const dot of leftBehind) { dot.classList.add('faded'); setTimeout(() => dot.remove(), 1000); }
+    leftBehind = [];
     const n = Math.min(CROWD_MAX, Math.round(game.speakers / PER_PERSON));
-    let leaving = Math.min(people.length, Math.round(lost / PER_PERSON));
-    while (people.length && (leaving > 0 || people.length > n)) {
+    const away = losses.flatMap((l) => Array.from({ length: l.n }, () => (l.at ? near(l.at, 1.5, 4) : near(game, game.r + 1.5, game.r + 5))));
+    while (people.length && (away.length || people.length > n)) {
       const dot = people.pop();
-      const [x, y] = spot(people.length, game);
       dot.classList.add('gone');
-      moveTo(dot, [x + (x - game.x) * 0.8, y + (y - game.y) * 0.8 + 3]);
-      setTimeout(() => dot.remove(), 1200);
-      leaving--;
+      if (away.length) {
+        moveTo(dot, away.shift());
+        leftBehind.push(dot);
+      } else {
+        dot.classList.add('faded');
+        setTimeout(() => dot.remove(), 1200);
+      }
     }
-    people.forEach((dot, i) => moveTo(dot, spot(i, game)));
+    people.forEach((dot, i) => moveTo(dot, spot(i, game, n)));
     let k = 0;
     while (people.length < n) {
-      const dot = svg('circle', { class: 'person', r: 0.6 });
+      const dot = svg('circle', { class: 'person', r: 0.75 });
       $('crowd').append(dot);
       if (from.length) {
         const src = from[k++ % from.length];
@@ -265,7 +287,7 @@
         dot.style.transition = '';
         dot.style.transitionDelay = `${Math.min(k * 40, 800)}ms`;
       }
-      moveTo(dot, spot(people.length, game));
+      moveTo(dot, spot(people.length, game, n));
       people.push(dot);
     }
   }
@@ -369,9 +391,9 @@
 
     // On the map: what each sense paid, and what you missed.
     const from = [];
-    let lost = 0;
+    const losses = p.reasons.filter((r) => r.amount < 0)
+      .map((r) => ({ n: Math.round(-r.amount / PER_PERSON), at: r.sense ? at(r.sense) : null }));
     for (const r of p.reasons) {
-      if (r.amount < 0) lost -= r.amount;
       if (!r.sense) continue;
       const l = at(r.sense);
       float(l.x, l.y - 2.4, signed(r.amount), r.scorned ? 'bad' : r.needed ? 'wanted' : 'plain');
@@ -406,7 +428,7 @@
       ...(!hadGoal && game.goal ? [el('span', { class: 'reveal' }, ` ★ You're becoming ${game.goal}.`)] : []));
     ghost = { x: game.x, y: game.y, r: game.r };
     render();
-    updateCrowd(lost, from);
+    updateCrowd(losses, from);
     if (game.over) setTimeout(showEnd, 1800);
   }
 
