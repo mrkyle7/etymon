@@ -287,6 +287,7 @@
     $('over').hidden = !game.over;
     $('next-label').textContent = `The ${ordinalCentury(era[0])}`;
     $('clue').textContent = E.clueNow(game);
+    $('scorn-clue').textContent = E.scornClueNow(game);
     const goal = game.goal;
     $('tags').replaceChildren(
       ...fads.map((s) => el('span', { class: 'tag fad', title: 'A new fad' }, `✦ ${s}`)),

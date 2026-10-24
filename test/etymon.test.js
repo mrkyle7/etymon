@@ -13,7 +13,7 @@ test('every word is well formed: its senses, centuries and history', () => {
     assert.ok(names.has(L.target), `${L.id}: target`);
     assert.strictEqual(L.history.length, L.eras.length, `${L.id}: a history step per century`);
     for (const h of L.history) assert.ok(names.has(h), `${L.id}: history ${h}`);
-    L.eras.forEach(([year, needed, form, clue, scorned, [alt, altClue]], i) => {
+    L.eras.forEach(([year, needed, form, clue, scorned, [alt, altClue], scornClue], i) => {
       assert.ok(altClue && alt.length === 2, `${L.id} ${year}: a second pair it might want, with its clue`);
       for (const n of alt) {
         assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: ${n} exists by then`);
@@ -21,6 +21,7 @@ test('every word is well formed: its senses, centuries and history', () => {
       }
       assert.ok(Number.isInteger(year) && form && clue, `${L.id}: ${year}`);
       assert.ok(scorned.length, `${L.id} ${year}: scorns something`);
+      assert.ok(scornClue, `${L.id} ${year}: a clue to what's out of fashion`);
       for (const n of scorned) {
         assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: scorned ${n} exists by then`);
         assert.ok(!needed.includes(n), `${L.id} ${year}: ${n} isn't both wanted and scorned`);
