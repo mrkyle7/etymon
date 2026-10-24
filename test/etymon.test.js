@@ -249,7 +249,7 @@ test('the best move is one you could make, and no move you could make beats it',
     }
   });
   assert.strictEqual(E.grade(29, 29), 'best');
-  assert.strictEqual(E.grade(24, 29), 'good');
-  assert.strictEqual(E.grade(14, 29), 'fair');
+  assert.strictEqual(E.grade(20, 29), 'good');
+  assert.strictEqual(E.grade(5, 29), 'fair');
   assert.strictEqual(E.grade(-7, 29), 'poor');
 });

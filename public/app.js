@@ -8,7 +8,7 @@
   const ENDINGS_KEY = 'etymon-endings';
   // Your speakers are a crowd of dots in your circle, one per PER_PERSON.
   const PER_PERSON = 5;
-  const CROWD_MAX = 80;
+  const CROWD_MAX = 120;
   const REPLAY_STEP = 1100; // ms per century
 
   let game;
@@ -16,6 +16,7 @@
   let people = []; // the crowd's dots, innermost first
   let leftBehind = []; // dots who left you last century, standing where they went
   let replay = null; // { step, timer } while the replay plays
+  let revealed = false; // whether the player has asked to see the best route
 
   function svg(tag, attrs = {}, text) {
     const node = document.createElementNS(SVG, tag);
@@ -60,6 +61,8 @@
   const reals = {};
   const realGame = () => reals[game.levelIndex] || (reals[game.levelIndex] = E.historyGame(game.levelIndex));
   const realSpeakers = (i) => (i ? realGame().log[i - 1].speakers : E.START_SPEAKERS);
+  // The answer: the perfect route to the ending you got, or to the real one.
+  const answerGame = () => E.perfectGame(game.levelIndex, game.goal || level().target);
   const GRADE_TEXT = { best: 'The best move you had.', good: 'A good move', fair: 'A fair move', poor: 'A poor move' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
   function ordinalCentury(year) {
@@ -83,6 +86,7 @@
     $('floats').replaceChildren();
     people = [];
     leftBehind = [];
+    revealed = false;
     $('menu').hidden = true;
     $('game').hidden = false;
     $('game-word').textContent = level().word;
@@ -123,7 +127,8 @@
     const p = E.preview(game, ghost);
     const below = [];
     const above = [];
-    const real = game.over ? E.historyGame(game.levelIndex) : null;
+    // The best route shows only once the player asks for the answer.
+    const real = game.over && revealed ? answerGame() : null;
     // During the replay, both journeys up to this century.
     const upTo = replay ? replay.step + 1 : Infinity;
 
@@ -162,8 +167,8 @@
       if (game.goal && known && l.name === game.goal) g.append(svg('text', { class: 'target-star', x: l.x + 1.6, y: l.y - 1.4 }, '★'));
       above.push(g);
     }
-    // What the century just passed wanted and scorned, and the best move you
-    // had, stay on the map until the next one passes.
+    // What the century just passed wanted and scorned stays on the map until
+    // the next one passes.
     const last = !game.over && !replay && game.log[game.log.length - 1];
     const word = game.over ? L.word : era[2];
     const count = ` ${game.speakers}`;
@@ -186,21 +191,16 @@
         above.push(svg('path', { class: `verdict-scorned${last.senses.includes(name) ? ' stung' : ''}`,
           d: `M${l.x - 1.8} ${l.y - 1.8}L${l.x + 1.8} ${l.y + 1.8}M${l.x + 1.8} ${l.y - 1.8}L${l.x - 1.8} ${l.y + 1.8}` }));
       }
-      if (last.grade !== 'best') {
-        const b = last.bestAt;
-        below.push(svg('circle', { class: 'best-ghost', cx: b.x, cy: b.y, r: b.r }));
-        const text = `best ${signed(last.best)}`;
-        const [bx, by] = wordSpot(text, b, shown, 3, [textBox(wx, wy, word + count, 4)]);
-        below.push(svg('text', { class: 'best-word', x: bx, y: by, 'text-anchor': 'middle' }, text));
-      }
     }
     if (replay) {
       const you = game.trail[Math.min(replay.step, game.trail.length - 1)];
-      const them = real.trail[Math.min(replay.step, real.trail.length - 1)];
-      above.push(svg('circle', { class: 'replay-real', cx: them.x, cy: them.y, r: them.r }));
+      if (real) {
+        const them = real.trail[Math.min(replay.step, real.trail.length - 1)];
+        above.push(svg('circle', { class: 'replay-real', cx: them.x, cy: them.y, r: them.r }));
+        above.push(svg('text', { class: 'real-word', x: them.x, y: Math.max(them.y - them.r + 4.5, 1), 'text-anchor': 'middle' }, 'best route'));
+      }
       above.push(svg('circle', { class: 'ghost', cx: you.x, cy: you.y, r: you.r }));
       above.push(svg('text', { class: 'ghost-word', x: you.x, y: you.y - 1.6, 'text-anchor': 'middle' }, 'you'));
-      above.push(svg('text', { class: 'real-word', x: them.x, y: Math.max(them.y - them.r + 4.5, 1), 'text-anchor': 'middle' }, `real ${L.word}`));
       const year = replay.step ? L.eras[replay.step - 1][0] : 'Start';
       above.push(svg('text', { class: 'replay-year', x: 1, y: 6 }, String(year)));
     } else {
@@ -303,7 +303,7 @@
     const L = level();
     const real = realGame();
     const top = Math.max(200, ...game.log.map((l) => l.speakers), ...real.log.map((l) => l.speakers));
-    const tick = (i) => el('span', { class: 'par', style: `bottom:${(100 * realSpeakers(i)) / top}%` });
+    const tick = (i) => (game.over && !revealed ? '' : el('span', { class: 'par', style: `bottom:${(100 * realSpeakers(i)) / top}%` }));
     $('timeline').replaceChildren(...L.eras.map((e, i) => {
       const entry = game.log[i];
       const last = i === L.eras.length - 1;
@@ -328,7 +328,9 @@
     $('year').textContent = game.over ? 'Today' : era[0];
     $('form').textContent = game.over ? L.word : era[2];
     $('speakers').textContent = game.speakers;
+    // At the end the real word's speakers would give away the best score.
     const par = game.over ? E.score(realGame()) - E.ARRIVAL_BONUS : realSpeakers(game.era);
+    $('par').hidden = game.over && !revealed;
     $('par').textContent = `real ${L.word}: ${par}`;
     $('par').className = `par-note ${game.speakers < par ? 'behind' : 'ahead'}`;
     const fads = game.over ? [] : E.fadNow(game);
@@ -386,7 +388,6 @@
     const stung = p.senses.filter((s) => entry.scorned.includes(s));
     const really = L.history[game.log.length - 1];
     entry.best = Math.max(best.delta, p.delta);
-    entry.bestAt = best.move;
     entry.grade = E.grade(p.delta, entry.best);
 
     // On the map: what each sense paid, and what you missed.
@@ -436,7 +437,9 @@
     const L = level();
     const score = E.score(game);
     const goal = game.goal;
-    const perfect = goal ? E.score(E.perfectGame(game.levelIndex, goal)) : null;
+    const perfect = E.score(answerGame());
+    // Matching the best route reveals it: there's nothing left to find.
+    if (score >= perfect) revealed = true;
     $('end-kicker').textContent = game.outcome === 'obsolete' ? '' : goal === L.target ? 'The real ending' : 'Another ending';
     $('end-title').textContent = {
       arrived: goal === L.target ? `You became "${L.word}"` : `In your world, ${L.word} means ${goal}`,
@@ -449,7 +452,12 @@
       obsolete: 'Nobody says you any more. You live on in the backs of old dictionaries.',
     }[game.outcome] || '';
     $('end-score').textContent = String(score);
-    $('end-perfect').textContent = perfect === null ? '—' : String(perfect) + (score >= perfect ? ' (you matched it!)' : '');
+    $('end-perfect-wrap').hidden = !revealed;
+    $('end-perfect').textContent = String(perfect) + (score >= perfect ? ' (you found it!)' : '');
+    $('end-reveal').hidden = revealed;
+    $('end-reveal').textContent = 'Reveal the answer';
+    $('end-reveal').classList.remove('warn');
+    $('end-warning').hidden = true;
     const isBest = saveBest(L.id, score);
     $('end-best').textContent = isBest ? 'A new best for this word.' : `Your best for this word: ${stored(BEST_KEY)[L.id]}.`;
     const found = game.outcome === 'arrived' ? saveEnding(L.id, goal) : (stored(ENDINGS_KEY)[L.id] || []);
@@ -466,7 +474,19 @@
     if (!$('end').open) $('end').showModal();
   }
 
-  // The replay: your circle and the real word's, century by century.
+  // The answer is two taps away: the first warns that it's the answer.
+  function reveal() {
+    if ($('end-warning').hidden) {
+      $('end-warning').hidden = false;
+      $('end-reveal').textContent = 'Yes, show me the answer';
+      $('end-reveal').classList.add('warn');
+      return;
+    }
+    revealed = true;
+    showEnd();
+  }
+
+  // The replay: your circle century by century, and the best route's once revealed.
   function startReplay() {
     stopReplay();
     replay = { step: 0 };
@@ -547,6 +567,7 @@
   $('replay-btn').addEventListener('click', startReplay);
   $('end-menu').addEventListener('click', () => { $('end').close(); showMenu(); });
   $('end-replay').addEventListener('click', () => { $('end').close(); startReplay(); });
+  $('end-reveal').addEventListener('click', reveal);
   $('end-next').addEventListener('click', () => { $('end').close(); start(game.levelIndex + 1); });
   $('end-again').addEventListener('click', () => { $('end').close(); start(game.levelIndex); });
   $('end-map').addEventListener('click', () => $('end').close());

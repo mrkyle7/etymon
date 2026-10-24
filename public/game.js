@@ -31,14 +31,14 @@
   const NARROW = 2;
   const MAX_SENSES = 3;
   const START_SPEAKERS = 100;
-  const MAX_SPEAKERS = 400;
-  const GAIN = { needed: 18, plain: 3 };
-  const SCORN = 15;
-  const FAD = 8; // a fad, the century it sprouts
+  const MAX_SPEAKERS = 600;
+  const GAIN = { needed: 30, plain: 3 };
+  const SCORN = 25;
+  const FAD = 12; // a fad, the century it sprouts
   const FAD_LIFE = 2; // centuries until a fad is out of fashion
   const REVEAL = 3; // centuries left when you learn what you're becoming
   const ON_COURSE = 3; // centuries matching history by then, for the real ending
-  const VAGUE = 10; // per sense over MAX_SENSES
+  const VAGUE = 15; // per sense over MAX_SENSES
   const MEANINGLESS = 20;
   const FORGETTING = 10;
   const ARRIVAL_BONUS = 100;
@@ -510,7 +510,7 @@
     return best;
   }
   // How a century's move compares with the best one: how many speakers short of it.
-  const GRADES = [[0, 'best'], [6, 'good'], [18, 'fair'], [Infinity, 'poor']];
+  const GRADES = [[0, 'best'], [10, 'good'], [30, 'fair'], [Infinity, 'poor']];
   const grade = (delta, best) => GRADES.find(([short]) => best - delta <= short)[1];
 
   function reachedTarget(g, at = g) {
@@ -573,7 +573,7 @@
 
   return {
     LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, FAD, FAD_LIFE, REVEAL,
-    ARRIVAL_BONUS, START_SPEAKERS, ON_COURSE, ROUTES, GAIN,
+    ARRIVAL_BONUS, START_SPEAKERS, MAX_SPEAKERS, ON_COURSE, ROUTES, GAIN,
     landmarks, senses, senseAt, newGame, eraOf, wantedNow, clueNow, scornedNow, scornClueNow, fadNow, goalKnown, constrain, preview, advance,
     reachedTarget, bestMove, grade, score, historyGame, perfectGame, faithful, chooseEnding,
   };

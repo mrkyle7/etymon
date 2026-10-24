@@ -39,7 +39,7 @@ function search(E, li, ending) {
           if (Math.hypot(x - g.x, y - g.y) > E.REACH) continue;
           const p = E.preview(g, { x, y, r });
           if (real && !p.senses.includes(L.history[i])) continue;
-          const speakers = Math.min(400, g.speakers + p.delta);
+          const speakers = Math.min(E.MAX_SPEAKERS, g.speakers + p.delta);
           if (speakers <= 0) continue;
           const key = `${x},${y},${r}|${p.senses.join(',')}`;
           const seen = best.get(key);

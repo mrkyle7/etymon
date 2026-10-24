@@ -98,7 +98,7 @@
       <li><b>2</b><span><strong>Tap a meaning</strong> to drift toward it, as far as the dashed ring.</span></li>
       <li><b>3</b><span><em>Optional:</em> <strong>broaden</strong> a lot, or <strong>narrow</strong> a little. Broad is a safer guess, but it takes centuries to shrink again.</span></li>
       <li><b>4</b><span><strong>Let the century pass.</strong> Speakers walk in from each meaning you carry, far more from wanted ones; some forget you.</span></li>
-      <li><b>5</b><span><strong>See how you did.</strong> Until the next century passes, the map rings what it wanted in gold (filled if you carried it, or with the speakers you missed round it), crosses out what went out of fashion, and shows the best move you could have made, dashed in gold. Your move is graded best, good, fair or poor against it.</span></li>
+      <li><b>5</b><span><strong>See how you did.</strong> Until the next century passes, the map rings what it wanted in gold (filled if you carried it, or with the speakers you missed round it), and crosses out what went out of fashion. Your move is graded best, good, fair or poor against the best one you had. Finding the best route is the puzzle: play again to beat your score.</span></li>
     </ol>
     <p class="legend">
       <span><i class="key-you"></i>you</span>
@@ -113,14 +113,14 @@
       <span><b class="key-scorned">✕</b>out of fashion</span>
     </p>
     <ul>
-      <li>Every meaning you carry wins <strong>+3</strong> speakers, or <strong>+18</strong> if the century wanted it.</li>
-      <li><strong>Out of fashion</strong> meanings cost <strong>15</strong> each if you carry them that century. If you don't, they cost you nothing.</li>
-      <li><strong>Fads</strong> (✦) sprout beside meanings you've carried. They pay <strong>+8</strong> the century they appear, and go out of fashion two centuries later.</li>
+      <li>Every meaning you carry wins <strong>+3</strong> speakers, or <strong>+30</strong> if the century wanted it.</li>
+      <li><strong>Out of fashion</strong> meanings cost <strong>25</strong> each if you carry them that century. If you don't, they cost you nothing.</li>
+      <li><strong>Fads</strong> (✦) sprout beside meanings you've carried. They pay <strong>+12</strong> the century they appear, and go out of fashion two centuries later.</li>
       <li>The panel shows what you mean <strong>now</strong>, the clue for <strong>next</strong>, and what would happen <strong>if you drift</strong> where your circle is. ✓ under a century means you meant what the word really meant then. Each century's bar is your speakers, green for a best or good move, gold for fair, red for poor; the dashed line is the real word's speakers, so you can see whether you're ahead of it.</li>
-      <li>Carry more than three and you're <strong>too vague</strong> (−10 each extra); none and nobody knows what you mean (−20). Every century, 10 people forget you anyway.</li>
+      <li>Carry more than three and you're <strong>too vague</strong> (−15 each extra); none and nobody knows what you mean (−20). Every century, 10 people forget you anyway.</li>
       <li><strong>What you become is up to you.</strong> After each century you learn what the word really meant then. Mean that in three of the first five centuries and you'll become what it means today. Stray, and your word finds another ending. You'll learn which with three centuries to go: carry it at the end for <strong>+100</strong>.</li>
     </ul>
-    <p class="small">At the end, see how your journey differed from the word's real one, and how close you came to the perfect route to your ending.</p>
+    <p class="small">At the end, see how your journey differed from the word's real one. The best route to your ending stays hidden unless you ask to see it, or match its score.</p>
     <form method="dialog"><button class="primary">Begin</button></form>
   </dialog>
 
@@ -130,7 +130,7 @@
     <p id="end-text"></p>
     <div class="end-score">
       <div><span class="label">Your score</span><strong class="big" id="end-score"></strong></div>
-      <div><span class="label">Perfect route to this ending</span><strong id="end-perfect"></strong></div>
+      <div id="end-perfect-wrap" hidden><span class="label">Best route to this ending</span><strong id="end-perfect"></strong></div>
     </div>
     <p class="small" id="end-best"></p>
     <p class="endings" id="end-endings"></p>
@@ -147,7 +147,9 @@
       <button type="button" id="end-again">Try again</button>
       <button type="button" id="end-map">See the map</button>
       <button type="button" id="end-menu">All words</button>
+      <button type="button" class="link" id="end-reveal">Reveal the answer</button>
     </div>
+    <p class="warning" id="end-warning" hidden>This shows the best route to this ending, century by century, and its score. It's the answer to the puzzle: once you've seen it, you can't unsee it.</p>
   </dialog>
 
   <script src="/routes.js"></script>
