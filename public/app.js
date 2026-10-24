@@ -181,9 +181,11 @@
         below.push(svg('circle', { class: `verdict-wanted${hit ? ' hit' : ''}`, cx: l.x, cy: l.y, r: 2.6 }));
         // The speakers it would have brought you, waiting round it.
         const missed = hit ? 0 : Math.round(E.GAIN.needed / PER_PERSON);
+        const rand = seeded(`${name}${last.year}`);
         for (let i = 0; i < missed; i++) {
-          const a = (i / missed) * 2 * Math.PI - Math.PI / 2;
-          below.push(svg('circle', { class: 'missed-person', cx: l.x + Math.cos(a) * 3.8, cy: l.y + Math.sin(a) * 3.8, r: 0.75 }));
+          const a = rand() * 2 * Math.PI;
+          const d = 2.2 + rand() * 4;
+          below.push(svg('circle', { class: 'missed-person', cx: l.x + Math.cos(a) * d, cy: l.y + Math.sin(a) * d, r: 0.75 }));
         }
       }
       for (const name of last.scorned) {
@@ -245,6 +247,17 @@
     const a = i * 2.39996;
     const d = at.r * 0.9 * Math.sqrt((i + 0.5) / Math.max(n, 12));
     return [at.x + Math.cos(a) * d, at.y + Math.sin(a) * d];
+  }
+  // Random numbers that come out the same for the same text, so a scatter
+  // stays put however often the map is drawn.
+  function seeded(text) {
+    let h = 2166136261;
+    for (const c of text) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    return () => {
+      h = Math.imul(h ^ (h >>> 15), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return ((h ^= h >>> 16) >>> 0) / 4294967296;
+    };
   }
   // Somewhere between `from` and `to` away from a point, on the map.
   function near(c, from, to) {
