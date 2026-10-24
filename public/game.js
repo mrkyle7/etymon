@@ -6,16 +6,20 @@
 // the century passes and your speakers change:
 //   - each sense you carry wins speakers, a lot more if the century needs
 //     words for it (you only learn which afterwards)
-//   - each sense the century scorns (you can see these) loses you speakers
+//   - each sense out of fashion this century (you can see these) loses you
+//     speakers
+//   - fads sprout next to senses you've carried: they pay well the century
+//     they appear, then go out of fashion two centuries later
 //   - carry more than MAX_SENSES and you're too vague to be useful
 //   - carry none and nobody knows what you mean
 //   - every century some speakers forget you anyway
-// Reach 0 speakers and you're obsolete. Survive to the last century carrying
-// the meaning you have today to win, and see the perfect route.
+// Reach 0 speakers and you're obsolete. What you mean today is hidden until
+// the last REVEAL centuries. Survive to the last century carrying it to win,
+// and see the perfect route.
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.Etymon = factory();
-})(typeof self !== 'undefined' ? self : this, function () {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./routes.js'));
+  else root.Etymon = factory(root.EtymonRoutes);
+})(typeof self !== 'undefined' ? self : this, function (ROUTES) {
   'use strict';
 
   const REACH = 20;
@@ -30,6 +34,10 @@
   const MAX_SPEAKERS = 400;
   const GAIN = { needed: 18, plain: 3 };
   const SCORN = 15;
+  const FAD = 8; // a fad, the century it sprouts
+  const FAD_LIFE = 2; // centuries until a fad is out of fashion
+  const REVEAL = 3; // centuries left when you learn what you're becoming
+  const ON_COURSE = 3; // centuries matching history by then, for the real ending
   const VAGUE = 10; // per sense over MAX_SENSES
   const MEANINGLESS = 20;
   const FORGETTING = 10;
@@ -42,12 +50,17 @@
   // each century's [x, y, breadth], a move a player could make, found by
   // searching every legal move. Each century is
   // [year, the senses it wants, the word's spelling then, a clue to what it
-  // wants, the senses it scorns].
+  // wants, the senses out of fashion]. `fads` are [x, y, quote, the sense
+  // that makes them sprout], appearing the century after you carry it.
+  // `endings` are what the word can mean today: `target`, the real one, and
+  // others it ends up with if the journey strays from history (`history`,
+  // what it really meant each century). Perfect routes to each are in
+  // routes.js, made by scripts/routes.js.
   const LEVELS = [
     {
       id: 'nice', word: 'nice', origin: 'Latin nescius, "not knowing"',
       start: 'ignorant', breadth: 10, target: 'pleasant',
-      blurb: 'Borrowed from Old French in about 1300, it meant "foolish" or "ignorant". Make it mean "pleasant".',
+      blurb: 'Borrowed from Old French in about 1300, it meant "foolish" or "ignorant".',
       landmarks: {
         ignorant: [12, 22, 'he was nyce and knew no letters'],
         foolish: [24, 34, 'a nyce fool, soon deceived'],
@@ -67,6 +80,19 @@
         tasty: [64, 86, 'a nice cup of tea', 1800],
         sarcastic: [94, 28, 'oh, very nice', 1900],
       },
+      endings: {
+        pleasant: { text: 'Today nice means pleasant: "a nice day at the seaside". Just as history had it.' },
+        foolish: { text: 'In your world nice never grew up: "don\'t be nice" means don\'t be daft.' },
+        precise: { text: 'In your world the scholars kept nice: it means exact, as in "a nice distinction", and nothing else.' },
+        delicate: { text: 'In your world nice means fragile: "handle it nicely, it\'s nice".' },
+      },
+      fads: {
+        lecherous: [40, 22, 'a nice old lecher', 'wanton'],
+        cowardly: [46, 54, 'too nice to fight', 'shy'],
+        pedantic: [80, 12, 'a nice pedant', 'precise'],
+        prim: [70, 42, 'nice and prim', 'dainty'],
+        posh: [62, 74, 'a nice neighbourhood', 'agreeable'],
+      },
       eras: [
         [1300, ['foolish', 'wanton'], 'nyce', 'Minstrels mock the gullible and the lusty.', ['ignorant']],
         [1400, ['wanton', 'shy'], 'nyce', 'Courtly love: gallants flirt, ladies blush.', ['foolish']],
@@ -78,12 +104,11 @@
         [2000, ['pleasant', 'kind'], 'nice', 'Everything is lovely, thanks for asking.', ['sarcastic']],
       ],
       history: ['foolish', 'wanton', 'shy', 'fussy', 'precise', 'agreeable', 'pleasant', 'pleasant'],
-      route: [[26, 24, 14], [32, 28, 18], [42, 34, 18], [60, 26, 22], [78, 34, 26], [88, 40, 30], [86, 40, 28], [86, 60, 26]],
     },
     {
       id: 'silly', word: 'silly', origin: 'Old English sǣlig, "blessed, happy"',
       start: 'blessed', breadth: 10, target: 'foolish',
-      blurb: 'In Old English it meant "blessed". Make it mean "foolish".',
+      blurb: 'In Old English it meant "blessed".',
       landmarks: {
         blessed: [14, 16, 'seely is the man that God loves'],
         holy: [32, 8, 'a seely saint'],
@@ -103,6 +128,19 @@
         stunned: [94, 46, 'knocked silly', 1600],
         trivial: [78, 92, 'a silly little thing', 1600],
       },
+      endings: {
+        foolish: { text: 'Today silly means foolish: "a silly question". Just as history had it.' },
+        holy: { text: 'In your world silly stayed blessed: carols sing of a "silly night", and nobody laughs.' },
+        weak: { text: 'In your world silly means flimsy: "don\'t lean on that, it\'s silly".' },
+        rustic: { text: 'In your world silly means countryfolk: "silly cheese from the hills".' },
+      },
+      fads: {
+        pious: [22, 4, 'a seely, pious soul', 'holy'],
+        meek: [62, 6, 'meek as a seely lamb', 'harmless'],
+        naive: [40, 46, 'silly and trusting', 'innocent'],
+        sickly: [84, 30, 'a silly, sickly child', 'feeble'],
+        clumsy: [80, 62, 'a silly, clumsy lad', 'simple'],
+      },
       eras: [
         [1000, ['holy', 'happy'], 'sǣlig', 'Monks copy psalms and feast on saints\' days.', ['harmless']],
         [1100, ['innocent', 'saintly'], 'seely', 'Sermons on lambs and martyrs.', ['happy']],
@@ -114,12 +152,11 @@
         [1700, ['foolish', 'trivial'], 'silly', 'Wits in the coffee houses mock everything.', ['rustic']],
       ],
       history: ['blessed', 'innocent', 'innocent', 'harmless', 'pitiable', 'feeble', 'simple', 'foolish'],
-      route: [[26, 20, 14], [46, 20, 18], [36, 30, 22], [40, 32, 20], [58, 40, 24], [60, 56, 28], [74, 58, 26], [82, 70, 26]],
     },
     {
       id: 'awful', word: 'awful', origin: 'Old English egefull, "full of awe"',
       start: 'awe-inspiring', breadth: 10, target: 'very bad',
-      blurb: 'It meant "inspiring awe", as of God. Make it mean "very bad".',
+      blurb: 'It meant "inspiring awe", as of God.',
       landmarks: {
         'awe-inspiring': [14, 80, 'the awful majesty of God'],
         majestic: [30, 92, 'an awful throne'],
@@ -139,6 +176,19 @@
         enormous: [80, 86, 'an awful big house', 1700],
         tiresome: [94, 8, 'an awful bore', 1900],
       },
+      endings: {
+        'very bad': { text: 'Today awful means very bad: "that was awful". Just as history had it.' },
+        wonderful: { text: 'In your world awful went the way of awesome: "the concert was awful!" is praise.' },
+        solemn: { text: 'In your world awful still belongs in church: "an awful silence" is a holy one.' },
+        enormous: { text: 'In your world awful just means big: "an awful house" is a mansion.' },
+      },
+      fads: {
+        hallowed: [8, 40, 'awful and holy ground', 'reverent'],
+        grim: [42, 86, 'an awful grim face', 'solemn'],
+        ghastly: [34, 42, 'an awful, ghastly face', 'terrifying'],
+        shocking: [68, 50, 'awful manners', 'dreadful'],
+        excessive: [66, 82, 'awful prices', 'great'],
+      },
       eras: [
         [1200, ['reverent', 'pious'], 'aȝefull', 'Cathedrals rise; the faithful kneel.', ['sublime']],
         [1300, ['solemn', 'sinful'], 'aweful', 'Doom paintings over every chancel arch.', ['majestic']],
@@ -150,12 +200,11 @@
         [1900, ['very bad', 'tiresome'], 'awful', 'Slang everywhere; complaints about everything.', ['dreadful']],
       ],
       history: ['reverent', 'solemn', 'terrifying', 'terrifying', 'dreadful', 'dreadful', 'ugly', 'very bad'],
-      route: [[8, 68, 14], [22, 74, 18], [30, 58, 22], [34, 42, 26], [48, 54, 26], [66, 60, 24], [70, 44, 24], [82, 28, 24]],
     },
     {
       id: 'girl', word: 'girl', origin: 'Middle English gyrle, "a child"',
-      start: 'child', breadth: 18, target: 'young woman', targetMaxBreadth: 9,
-      blurb: 'Chaucer\'s "girles" were children, boys included. Narrow it until it means only "young woman".',
+      start: 'child', breadth: 18, target: 'young woman',
+      blurb: 'Chaucer\'s "girles" were children, boys included.',
       landmarks: {
         child: [50, 50, 'the gyrles of the parish, both boys and maids'],
         boy: [36, 42, 'a knave gerl, a boy'],
@@ -173,6 +222,19 @@
         shopgirl: [92, 28, 'the girl at the counter', 1800],
         friends: [70, 94, 'a night out with the girls', 1900],
       },
+      endings: {
+        'young woman': { maxBreadth: 9, text: 'Today girl means a young woman, and only that. Just as history had it.' },
+        child: { maxBreadth: 12, text: 'In your world girl still means any child, as Chaucer had it: "boy girls and maid girls".' },
+        servant: { maxBreadth: 12, text: 'In your world girl means a servant, of any age: "ring for the girl".' },
+        pupil: { maxBreadth: 12, text: 'In your world girl means a schoolchild: "the girls are back at their letters".' },
+      },
+      fads: {
+        urchin: [14, 22, 'a girl of the gutters', 'rogue'],
+        apprentice: [28, 50, 'a girl bound to a trade', 'boy'],
+        maidservant: [82, 32, 'the girl who lays the fires', 'servant'],
+        bride: [50, 90, 'the girl to be married', 'daughter'],
+        'chorus girl': [92, 68, 'a girl from the music hall', 'sweetheart'],
+      },
       eras: [
         [1300, ['child', 'young person'], 'gyrle', 'Village feast days: children everywhere.', ['rogue']],
         [1400, ['beggar', 'boy'], 'girle', 'Famine roads, and boys sent out to work.', ['servant']],
@@ -184,12 +246,11 @@
         [2000, ['young woman', 'daughter'], 'girl', 'Birthday cards and graduations.', ['servant']],
       ],
       history: ['child', 'young person', 'young person', 'young woman', 'young woman', 'young woman', 'young woman', 'young woman'],
-      route: [[40, 62, 18], [44, 52, 18], [50, 50, 18], [68, 50, 16], [68, 56, 14], [76, 66, 12], [72, 56, 10], [74, 56, 8]],
     },
     {
       id: 'meat', word: 'meat', origin: 'Old English mete, "food"',
-      start: 'food', breadth: 18, target: 'flesh', targetMaxBreadth: 10,
-      blurb: 'It meant any food: "meat and drink". Narrow it down to animal flesh.',
+      start: 'food', breadth: 18, target: 'flesh',
+      blurb: 'It meant any food: "meat and drink".',
       landmarks: {
         food: [46, 50, 'mete and drink'],
         meal: [38, 66, 'at mete, the king spoke'],
@@ -208,6 +269,19 @@
         venison: [78, 50, 'red meat of the deer', 1400],
         gist: [94, 86, 'the meat of the matter', 1700],
       },
+      endings: {
+        flesh: { maxBreadth: 10, text: 'Today meat means animal flesh. Just as history had it.' },
+        food: { maxBreadth: 12, text: 'In your world meat still means any food, as Swedish mat does: "meat and drink".' },
+        kernel: { maxBreadth: 12, text: 'In your world meat means the inside of things: "the meat of a walnut", never a steak.' },
+        substance: { maxBreadth: 12, text: 'In your world meat means substance: "a meaty argument", and butchers sell flesh.' },
+      },
+      fads: {
+        grain: [20, 18, 'mete of corn and barley', 'provisions'],
+        banquet: [20, 96, 'a meat for the king', 'feast'],
+        supper: [48, 82, 'sit down to meat', 'meal'],
+        game: [68, 58, 'meat of the hare and boar', 'venison'],
+        carcass: [96, 48, 'the meat hung in the larder', 'flesh'],
+      },
       eras: [
         [1000, ['food', 'provisions'], 'mete', 'A hard winter; stores run low.', ['kernel']],
         [1100, ['feast', 'food'], 'mete', 'Norman lords and their banquets.', ['fodder']],
@@ -219,7 +293,6 @@
         [1700, ['flesh', 'gist'], 'meat', 'Pamphleteers argue the heart of every matter.', ['food']],
       ],
       history: ['food', 'food', 'meal', 'fish', 'fish', 'flesh', 'flesh', 'flesh'],
-      route: [[32, 40, 18], [32, 40, 18], [38, 48, 18], [54, 36, 18], [72, 36, 16], [86, 22, 14], [76, 38, 12], [78, 40, 10]],
     },
   ];
 
@@ -235,32 +308,62 @@
   }
   const landmark = (level, name) => landmarks(level).find((l) => l.name === name);
 
+  // The senses this game has by now: the word's own, and the fads that have
+  // sprouted along your route (`g.fads`, each fad's sprouting century).
+  function senses(g, era = g.era) {
+    const level = levelOf(g);
+    const year = level.eras[Math.min(era, level.eras.length - 1)][0];
+    const fads = Object.entries(g.fads)
+      .filter(([, at]) => at <= era)
+      .map(([name, at]) => { const [x, y, quote] = level.fads[name]; return { name, x, y, quote, from: year, fad: at }; });
+    return [...landmarks(level, year), ...fads];
+  }
+  const senseAt = (g, name) => senses(g, Infinity).find((l) => l.name === name);
+
   function newGame(levelIndex = 0) {
     const level = LEVELS[levelIndex];
     const start = landmark(level, level.start);
     const g = {
       levelIndex, era: 0, x: start.x, y: start.y, r: level.breadth, speakers: START_SPEAKERS,
       trail: [{ x: start.x, y: start.y, r: level.breadth }], log: [], over: false, outcome: null,
-      seen: [],
+      seen: [], fads: {}, goal: null,
     };
     look(g);
     return g;
   }
 
-  // Senses you can make out: those near you, the one you're heading for,
-  // the ones this century scorns, and any you've made out before.
+  // Senses you can make out: those near you, the ones out of fashion, fads,
+  // and any you've made out before. Even today's meaning stays a "?" until
+  // you get near it.
   function look(g) {
-    const level = levelOf(g);
     const seen = new Set(g.seen);
-    seen.add(level.target);
     for (const name of scornedNow(g)) seen.add(name);
-    for (const l of landmarks(level, eraOf(g)[0])) if (dist(l, g) <= SIGHT + g.r) seen.add(l.name);
+    for (const name of Object.keys(g.fads)) seen.add(name);
+    for (const l of senses(g)) if (dist(l, g) <= SIGHT + g.r) seen.add(l.name);
     g.seen = [...seen];
   }
 
   const levelOf = (g) => LEVELS[g.levelIndex];
   const eraOf = (g) => levelOf(g).eras[Math.min(g.era, levelOf(g).eras.length - 1)];
-  const scornedNow = (g) => eraOf(g)[4] || [];
+  // Out of fashion this century: the century's own, and fads that have had their day.
+  const scornedNow = (g) => [...(eraOf(g)[4] || []),
+    ...Object.entries(g.fads).filter(([, at]) => g.era === at + FAD_LIFE).map(([name]) => name)];
+  const fadNow = (g) => Object.entries(g.fads).filter(([, at]) => g.era === at).map(([name]) => name);
+  // Whether you know yet what the word means today.
+  const goalKnown = (g) => !!g.goal;
+
+  // How many centuries so far you meant what the word really meant then.
+  const faithful = (g) => g.log.filter((l, i) => l.senses.includes(levelOf(g).history[i])).length;
+
+  // What your journey makes of the word today: the real meaning if you've
+  // kept close to history, or else the other ending nearest where you are.
+  function chooseEnding(g) {
+    const level = levelOf(g);
+    if (faithful(g) >= ON_COURSE) return level.target;
+    return Object.keys(level.endings).filter((name) => name !== level.target)
+      .map((name) => ({ name, d: dist(landmark(level, name), g) }))
+      .sort((a, b) => a.d - b.d)[0].name;
+  }
 
   // Where a move may go: within REACH of where you are, on the map, and
   // at most BROADEN broader or NARROW narrower than you are now.
@@ -282,11 +385,16 @@
     const level = levelOf(g);
     const needed = eraOf(g)[1];
     const scorned = scornedNow(g);
-    const senses = landmarks(level, eraOf(g)[0]).filter((l) => dist(l, m) <= m.r);
+    const fads = fadNow(g);
+    const held = senses(g).filter((l) => dist(l, m) <= m.r);
     const reasons = [];
-    for (const s of senses) {
+    for (const s of held) {
       if (scorned.includes(s.name)) {
-        reasons.push({ sense: s.name, scorned: true, amount: -SCORN, ifPlain: -SCORN, ifWanted: -SCORN, text: `${s.name} is scorned` });
+        reasons.push({ sense: s.name, scorned: true, amount: -SCORN, ifPlain: -SCORN, ifWanted: -SCORN, text: `${s.name} is out of fashion` });
+        continue;
+      }
+      if (fads.includes(s.name)) {
+        reasons.push({ sense: s.name, fad: true, amount: FAD, ifPlain: FAD, ifWanted: FAD, text: `${s.name} is the latest fad` });
         continue;
       }
       const isNeeded = needed.includes(s.name);
@@ -296,22 +404,23 @@
         ifPlain: GAIN.plain, ifWanted: GAIN.needed, text: s.name,
       });
     }
-    if (senses.length > MAX_SENSES) {
-      reasons.push({ amount: -VAGUE * (senses.length - MAX_SENSES), text: `too vague: ${senses.length} senses` });
+    if (held.length > MAX_SENSES) {
+      reasons.push({ amount: -VAGUE * (held.length - MAX_SENSES), text: `too vague: ${held.length} meanings` });
     }
-    if (!senses.length) reasons.push({ amount: -MEANINGLESS, text: 'nobody knows what you mean' });
+    if (!held.length) reasons.push({ amount: -MEANINGLESS, text: 'nobody knows what you mean' });
     reasons.push({ amount: -FORGETTING, text: 'forgotten by some' });
     const delta = reasons.reduce((n, r) => n + r.amount, 0);
     // The range the player sees: no sense wanted, to every sense wanted.
     const sure = reasons.reduce((n, r) => n + (r.sense ? r.ifPlain : r.amount), 0);
     const best = reasons.reduce((n, r) => n + (r.sense ? r.ifWanted : r.amount), 0);
-    return { move: m, senses: senses.map((s) => s.name), reasons, delta, range: [sure, best] };
+    return { move: m, senses: held.map((s) => s.name), reasons, delta, range: [sure, best] };
   }
 
   function reachedTarget(g, at = g) {
+    if (!g.goal) return false;
     const level = levelOf(g);
-    const t = landmark(level, level.target);
-    return dist(t, at) <= at.r && (!level.targetMaxBreadth || at.r <= level.targetMaxBreadth);
+    const max = level.endings[g.goal].maxBreadth;
+    return dist(landmark(level, g.goal), at) <= at.r && (!max || at.r <= max);
   }
 
   // Let a century pass with you at `move`.
@@ -325,10 +434,20 @@
     const year = eraOf(g)[0];
     g.log.push({
       year, form: eraOf(g)[2], senses: p.senses, wanted: eraOf(g)[1], scorned: scornedNow(g),
-      delta: p.delta, speakers: g.speakers,
+      delta: p.delta, speakers: g.speakers, at: { ...p.move },
     });
 
+    // Fads sprout next to the senses you carried.
     g.era++;
+    const sprouted = [];
+    if (g.era < level.eras.length) {
+      for (const [name, [, , , after]] of Object.entries(level.fads || {})) {
+        if (!(name in g.fads) && p.senses.includes(after)) { g.fads[name] = g.era; sprouted.push(name); }
+      }
+    }
+    g.log[g.log.length - 1].sprouted = sprouted;
+    g.log[g.log.length - 1].faithful = p.senses.includes(level.history[g.era - 1]);
+    if (g.era === level.eras.length - REVEAL) g.goal = chooseEnding(g);
     if (g.era < level.eras.length) look(g);
     if (g.speakers <= 0) {
       g.over = true;
@@ -345,15 +464,19 @@
     return g.speakers + (g.outcome === 'arrived' ? ARRIVAL_BONUS : 0);
   }
 
-  // The meanings the word really took, played perfectly through the same rules.
-  function historyGame(levelIndex) {
+  // The perfect route to an ending, played through the same rules. To the
+  // real ending, it means what the word really meant every century.
+  function perfectGame(levelIndex, ending = LEVELS[levelIndex].target) {
     const g = newGame(levelIndex);
-    for (const [x, y, r] of LEVELS[levelIndex].route) if (!g.over) advance(g, { x, y, r });
+    for (const [x, y, r] of ROUTES[LEVELS[levelIndex].id][ending]) if (!g.over) advance(g, { x, y, r });
     return g;
   }
+  const historyGame = (levelIndex) => perfectGame(levelIndex);
 
   return {
-    LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, ARRIVAL_BONUS, START_SPEAKERS,
-    landmarks, newGame, eraOf, scornedNow, constrain, preview, advance, reachedTarget, score, historyGame,
+    LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, FAD, FAD_LIFE, REVEAL,
+    ARRIVAL_BONUS, START_SPEAKERS, ON_COURSE, ROUTES,
+    landmarks, senses, senseAt, newGame, eraOf, scornedNow, fadNow, goalKnown, constrain, preview, advance,
+    reachedTarget, score, historyGame, perfectGame, faithful, chooseEnding,
   };
 });

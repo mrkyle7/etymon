@@ -21,109 +21,135 @@
   </header>
 
   <main>
-    <div class="title">
+    <div class="top">
       <h1>Etymon</h1>
+      <nav class="words" id="words" aria-label="Choose a word"></nav>
       <button type="button" class="link" id="rules-btn">How to play</button>
     </div>
-    <p class="tagline">You are a word. Drift through a thousand years of meaning and arrive at what you mean today.</p>
 
-    <nav class="words" id="words" aria-label="Choose a word"></nav>
+    <div class="play">
+      <section class="era panel" aria-live="polite">
+        <div class="era-head">
+          <div class="form-wrap">
+            <span class="year" id="year">1300</span>
+            <span class="form" id="form">nyce</span>
+          </div>
+          <div class="era-stats">
+            <div><span class="label">Speakers</span><strong id="speakers">100</strong><span id="speakers-delta" class="bump"></span></div>
+            <div><span class="label">Becoming</span><strong id="target">?</strong><span class="sub" id="target-sub"></span></div>
+          </div>
+        </div>
+        <div class="clue-box" id="clue-box">
+          <p class="clue"><span class="tag">Clue</span> <em id="clue"></em></p>
+          <p class="clue-help">Two meanings will be wanted this century. Guess which, and cover them with your circle.</p>
+          <p class="warn" id="fashion-line"></p>
+          <p class="fad-line" id="fad-line"></p>
+        </div>
+      </section>
 
-    <section class="era" aria-live="polite">
-      <div class="form-wrap">
-        <span class="year" id="year">1300</span>
-        <span class="form" id="form">nyce</span>
-      </div>
-      <div class="era-stats">
-        <div><span class="label">Speakers</span><strong id="speakers">100</strong><span id="speakers-delta" class="bump"></span></div>
-        <div><span class="label">Becoming ★</span><strong id="target">pleasant</strong></div>
-      </div>
-      <div class="clue-box" id="clue-box">
-        <p class="clue"><span class="tag">Clue</span> <em id="clue"></em></p>
-        <p class="clue-help">Which meanings will people want words for this century? Guess, and cover them with your circle.</p>
-        <p class="scorned-line" id="scorned-line"></p>
-      </div>
-    </section>
+      <section class="progress">
+        <ol class="timeline" id="timeline" aria-label="Your speakers, century by century"></ol>
+        <p class="result" id="result" aria-live="polite"></p>
+      </section>
 
-    <ol class="timeline" id="timeline" aria-label="Your speakers, century by century"></ol>
-    <p class="result" id="result" aria-live="polite"></p>
+      <section class="board panel">
+        <svg id="map" viewBox="-4 -4 108 108" role="img" aria-label="The map of meaning. Tap a meaning to drift toward it.">
+          <defs>
+            <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+              <path d="M0 0L10 5L0 10z" class="arrowhead"/>
+            </marker>
+          </defs>
+          <g id="below"></g>
+          <g id="crowd" class="crowd"></g>
+          <g id="above"></g>
+          <g id="floats"></g>
+        </svg>
+        <div class="breadth" id="breadth" role="group" aria-label="Breadth">
+          <button type="button" id="narrow" aria-pressed="false" aria-label="Narrow a little: hold fewer meanings">&minus; Narrow</button>
+          <span id="breadth-val"></span>
+          <button type="button" id="broaden" aria-pressed="false" aria-label="Broaden a lot: hold more meanings">Broaden +</button>
+        </div>
+        <p class="breadth-help" id="breadth-help">Once a century: broaden a lot, or narrow a little. Grow too big and it takes centuries to shrink.</p>
+        <div class="controls">
+          <button type="button" class="primary" id="pass">Let the century pass</button>
+          <button type="button" class="primary" id="replay-btn" hidden>Watch the replay</button>
+        </div>
+      </section>
 
-    <div class="board">
-      <svg id="map" viewBox="-4 -4 108 108" role="img" aria-label="The map of meaning. Tap a meaning to drift toward it.">
-        <defs>
-          <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
-            <path d="M0 0L10 5L0 10z" class="arrowhead"/>
-          </marker>
-        </defs>
-        <g id="below"></g>
-        <g id="crowd" class="crowd"></g>
-        <g id="above"></g>
-        <g id="floats"></g>
-      </svg>
-      <div class="breadth" id="breadth" role="group" aria-label="Breadth">
-        <button type="button" id="narrow" aria-pressed="false" aria-label="Narrow a little: hold fewer meanings">&minus; Narrow</button>
-        <span id="breadth-val"></span>
-        <button type="button" id="broaden" aria-pressed="false" aria-label="Broaden a lot: hold more meanings">Broaden +</button>
-      </div>
-      <p class="breadth-help" id="breadth-help">Once a century: broaden a lot, or narrow a little. Grow too big and it takes centuries to shrink.</p>
-      <div class="controls">
-        <button type="button" class="primary" id="pass">Let the century pass</button>
-      </div>
+      <section class="meanings panel" aria-live="polite">
+        <div class="row"><span class="label">You mean now</span><span class="chips" id="now-chips"></span></div>
+        <div class="row"><span class="label">Your journey</span><ol class="journey" id="journey"></ol></div>
+        <p class="course" id="course"></p>
+      </section>
+
+      <section class="preview panel" id="preview" aria-live="polite">
+        <div class="row"><span class="label">Drift here and you&rsquo;d mean</span><span class="chips" id="next-chips"></span></div>
+        <ul id="reasons"></ul>
+        <p class="total">Speakers this century <strong id="delta"></strong></p>
+      </section>
+
+      <details class="chronicle panel">
+        <summary>Chronicle</summary>
+        <ol id="log"></ol>
+      </details>
     </div>
-
-    <section class="preview" id="preview" aria-live="polite">
-      <h2>If you drift here, this century you&rsquo;d get&hellip;</h2>
-      <ul id="reasons"></ul>
-      <p class="total">Speakers <strong id="delta"></strong></p>
-    </section>
-
-
-    <details class="chronicle" open>
-      <summary>Chronicle</summary>
-      <ol id="log"></ol>
-    </details>
   </main>
 
   <dialog id="rules">
     <h2>Etymon</h2>
-    <p class="lede">Words wander. <em>Nice</em> once meant foolish; <em>silly</em> meant blessed; a <em>girl</em> could be a boy. You are one of these words, at the start of its journey.</p>
-    <p>The map is <strong>meaning</strong>. Each dot is a sense, and your circle holds the senses you carry. The little dots inside it are your <strong>speakers</strong>: the people who say you. Each century:</p>
+    <p class="lede">Words wander. <em>Nice</em> once meant foolish; <em>silly</em> meant blessed; a <em>girl</em> could be a boy. You are one of these words, at the start of its journey, and what you mean today depends on where you go.</p>
+    <p>The map is <strong>meaning</strong>. Each dot is a meaning, and your circle holds the ones you carry. The little dots inside it are your <strong>speakers</strong>. Each century:</p>
     <ol class="steps">
-      <li><b>1</b><span><strong>Read the clue.</strong> Each century wants words for two meanings, and the clue hints which. You only find out afterwards.</span></li>
-      <li><b>2</b><span><strong>Tap a meaning</strong> on the map to drift your word toward it. You can only drift as far as the dashed ring.</span></li>
-      <li><b>3</b><span><em>Optional:</em> <strong>broaden</strong> a lot, or <strong>narrow</strong> a little. Broad is a safer guess, but grow too big and it takes centuries to shrink.</span></li>
-      <li><b>4</b><span><strong>Let the century pass.</strong> New speakers walk in from each meaning you hold, far more from the wanted ones; some forget you.</span></li>
+      <li><b>1</b><span><strong>Read the clue.</strong> Each century wants words for two meanings, and the clue hints which. You find out afterwards.</span></li>
+      <li><b>2</b><span><strong>Tap a meaning</strong> to drift toward it, as far as the dashed ring.</span></li>
+      <li><b>3</b><span><em>Optional:</em> <strong>broaden</strong> a lot, or <strong>narrow</strong> a little. Broad is a safer guess, but it takes centuries to shrink again.</span></li>
+      <li><b>4</b><span><strong>Let the century pass.</strong> Speakers walk in from each meaning you carry, far more from wanted ones; some forget you.</span></li>
     </ol>
     <p class="legend">
       <span><i class="key-you"></i>you, and your speakers</span>
-      <span><i class="key-reach"></i>how far you can drift this century</span>
-      <span><b class="key-scorn">✕</b>scorned this century: carrying it costs speakers</span>
-      <span><i class="key-unknown"></i>? too far away to make out. Drift closer.</span>
-      <span><b class="key-star">★</b>where you're going</span>
+      <span><i class="key-reach"></i>how far you can drift</span>
+      <span><b class="key-scorn">✕</b>out of fashion: costs speakers</span>
+      <span><b class="key-fad">✦</b>a new fad</span>
+      <span><i class="key-unknown"></i>? too far to make out</span>
+      <span><b class="key-star">★</b>what you become, once you know</span>
     </p>
     <ul>
-      <li>Every meaning you hold wins <strong>+3</strong> speakers, or <strong>+18</strong> if it's one the century wanted.</li>
-      <li>Hold more than three and you're <strong>too vague</strong> (−10 for each extra). Hold none and nobody knows what you mean (−20). Every century, 10 people forget you anyway.</li>
-      <li>New meanings appear as the centuries pass, and distant ones are only a <strong>?</strong> until you drift near.</li>
-      <li>Reach zero speakers and you're <strong>obsolete</strong>. Hold today's meaning (★) in the last century for <strong>+100</strong>. The bars above the map show how you're doing.</li>
+      <li>Every meaning you carry wins <strong>+3</strong> speakers, or <strong>+18</strong> if the century wanted it.</li>
+      <li><strong>Out of fashion</strong> meanings (red ✕) cost <strong>15</strong> each while you carry them. If the meaning you have now is one, drift off it.</li>
+      <li><strong>Fads</strong> (✦) sprout beside meanings you've carried. They pay <strong>+8</strong> the century they appear, and go out of fashion two centuries later.</li>
+      <li>Carry more than three and you're <strong>too vague</strong> (−10 each extra); none and nobody knows what you mean (−20). Every century, 10 people forget you anyway.</li>
+      <li><strong>What you become is up to you.</strong> After each century you learn what the word really meant then. Mean that in three of the first five centuries and you'll become what it means today. Stray, and your word finds another ending. You'll learn which with three centuries to go: carry it at the end for <strong>+100</strong>.</li>
     </ul>
-    <p class="small">At the end you'll see the perfect route: what the word really meant each century, played knowing what every century wanted.</p>
+    <p class="small">At the end, see how your journey differed from the word's real one, and how close you came to the perfect route to your ending.</p>
     <form method="dialog"><button class="primary">Begin</button></form>
   </dialog>
 
   <dialog id="end">
+    <p class="kicker" id="end-kicker"></p>
     <h2 id="end-title"></h2>
     <p id="end-text"></p>
-    <p class="big" id="end-score"></p>
-    <p id="end-history"></p>
+    <div class="end-score">
+      <div><span class="label">Your score</span><strong class="big" id="end-score"></strong></div>
+      <div><span class="label">Perfect route to this ending</span><strong id="end-perfect"></strong></div>
+    </div>
     <p class="small" id="end-best"></p>
+    <p class="endings" id="end-endings"></p>
+    <h3>Your journey and the real one</h3>
+    <div class="table-wrap">
+      <table class="compare">
+        <thead><tr><th>Year</th><th>You meant</th><th>It really meant</th><th>Wanted</th></tr></thead>
+        <tbody id="end-table"></tbody>
+      </table>
+    </div>
     <div class="end-buttons">
-      <button type="button" class="primary" id="end-next">Next word</button>
+      <button type="button" class="primary" id="end-replay">Watch the replay</button>
+      <button type="button" id="end-next">Next word</button>
       <button type="button" id="end-again">Try again</button>
-      <button type="button" id="end-map">See the map</button>
+      <button type="button" id="end-map">Close</button>
     </div>
   </dialog>
 
+  <script src="/routes.js"></script>
   <script src="/game.js"></script>
   <script src="/app.js"></script>
   <script>

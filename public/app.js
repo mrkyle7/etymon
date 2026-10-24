@@ -5,14 +5,16 @@
   const $ = (id) => document.getElementById(id);
   const SVG = 'http://www.w3.org/2000/svg';
   const BEST_KEY = 'etymon-best';
+  const ENDINGS_KEY = 'etymon-endings';
   // Your speakers are a crowd of dots in your circle, one per PER_PERSON.
   const PER_PERSON = 5;
   const CROWD_MAX = 80;
+  const REPLAY_STEP = 1100; // ms per century
 
   let game;
   let ghost; // where you're thinking of drifting: { x, y, r }
-  let showHistory = false;
   let people = []; // the crowd's dots, innermost first
+  let replay = null; // { step, timer } while the replay plays
 
   function svg(tag, attrs = {}, text) {
     const node = document.createElementNS(SVG, tag);
@@ -31,23 +33,45 @@
     return node;
   }
 
-  function bests() {
-    try { return JSON.parse(localStorage.getItem(BEST_KEY) || '{}') || {}; } catch { return {}; }
+  function stored(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch { return {}; }
+  }
+  function store(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private window */ }
   }
   function saveBest(id, score) {
-    const b = bests();
+    const b = stored(BEST_KEY);
     if (b[id] !== undefined && b[id] >= score) return false;
     b[id] = score;
-    try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch { /* private window */ }
+    store(BEST_KEY, b);
     return true;
   }
+  // The endings you've found for each word, like a set to collect.
+  function saveEnding(id, ending) {
+    const found = stored(ENDINGS_KEY);
+    found[id] = [...new Set([...(found[id] || []), ending])];
+    store(ENDINGS_KEY, found);
+    return found[id];
+  }
+
+  const level = () => E.LEVELS[game.levelIndex];
+  const signed = (n) => (n > 0 ? `+${n}` : String(n));
+  function ordinalCentury(year) {
+    const c = Math.floor(year / 100) + 1;
+    const s = c % 100 >= 11 && c % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[c % 10] || 'th');
+    return `${c}${s} century`;
+  }
+  const words = (names, bold = []) => names.flatMap((w, i) => [i ? (i === names.length - 1 ? ' and ' : ', ') : '',
+    el(bold.includes(w) ? 'strong' : 'span', {}, w)]);
+  // What you mean where you stand now.
+  const meaningNow = () => E.preview(game, { x: game.x, y: game.y, r: game.r }).senses;
 
   function start(levelIndex) {
+    stopReplay();
     game = E.newGame(levelIndex);
     ghost = { x: game.x, y: game.y, r: game.r };
-    showHistory = false;
     $('log').replaceChildren();
-    $('result').replaceChildren('Read the clue, then tap a meaning to drift toward it.');
+    $('result').replaceChildren(el('em', {}, level().blurb), ' Read the clue, then tap a meaning to drift toward it.');
     $('crowd').replaceChildren();
     $('floats').replaceChildren();
     people = [];
@@ -57,7 +81,7 @@
   }
 
   function renderWords() {
-    const b = bests();
+    const b = stored(BEST_KEY);
     $('words').replaceChildren(...E.LEVELS.map((L, i) => el('button', {
       type: 'button', 'aria-current': String(i === game.levelIndex),
       onclick: () => start(i),
@@ -69,53 +93,74 @@
   }
 
   function renderMap() {
-    const level = E.LEVELS[game.levelIndex];
+    const L = level();
     const era = E.eraOf(game);
     const scorned = game.over ? [] : E.scornedNow(game);
+    const fads = game.over ? [] : E.fadNow(game);
+    const mine = game.over ? [] : meaningNow();
     const p = E.preview(game, ghost);
     const below = [];
     const above = [];
+    const real = game.over ? E.historyGame(game.levelIndex) : null;
+    // During the replay, both journeys up to this century.
+    const upTo = replay ? replay.step + 1 : Infinity;
 
     for (let v = 0; v <= 100; v += 25) {
       below.push(svg('line', { class: 'grid', x1: v, y1: 0, x2: v, y2: 100 }));
       below.push(svg('line', { class: 'grid', x1: 0, y1: v, x2: 100, y2: v }));
     }
-    if (showHistory) {
-      const h = E.historyGame(game.levelIndex);
-      // The perfect route: where it went and how broad it was, each century.
-      for (const t of h.trail.slice(1)) below.push(svg('circle', { class: 'history-step', cx: t.x, cy: t.y, r: t.r }));
-      below.push(svg('path', { class: 'history', d: path(h.trail) }));
+    if (real) {
+      const steps = real.trail.slice(0, upTo);
+      if (!replay) for (const t of steps.slice(1)) below.push(svg('circle', { class: 'history-step', cx: t.x, cy: t.y, r: t.r }));
+      below.push(svg('path', { class: 'history', d: path(steps) }));
     }
-    below.push(svg('path', { class: 'trail', d: path(game.trail) }));
+    below.push(svg('path', { class: 'trail', d: path(game.trail.slice(0, upTo)) }));
     if (!game.over) {
       below.push(svg('circle', { class: 'reach', cx: game.x, cy: game.y, r: E.REACH }));
       below.push(svg('circle', { class: 'now', cx: game.x, cy: game.y, r: game.r }));
     }
-    for (const l of E.landmarks(level, game.over ? Infinity : era[0])) {
+    const shown = game.over ? E.senses(game, Infinity) : E.senses(game);
+    for (const l of shown) {
       // Senses too far away to make out are a faint "?" until you get near.
       const known = game.over || game.seen.includes(l.name);
       const cls = ['sense'];
       if (!known) cls.push('unknown');
       if (scorned.includes(l.name)) cls.push('scorned');
+      if (fads.includes(l.name)) cls.push('fad');
+      if (mine.includes(l.name)) cls.push('mine');
       if (p.senses.includes(l.name) && !game.over) cls.push('held');
       const g = svg('g', { class: cls.join(' ') });
       if (scorned.includes(l.name)) {
         g.append(svg('path', { class: 'cross', d: `M${l.x - 1.2} ${l.y - 1.2}L${l.x + 1.2} ${l.y + 1.2}M${l.x + 1.2} ${l.y - 1.2}L${l.x - 1.2} ${l.y + 1.2}` }));
+      } else if (fads.includes(l.name)) {
+        g.append(svg('text', { class: 'spark', x: l.x, y: l.y + 1.3, 'text-anchor': 'middle' }, '✦'));
       } else {
         g.append(svg('circle', { cx: l.x, cy: l.y, r: known ? 1 : 0.7 }));
       }
       const anchor = l.x > 80 ? 'end' : l.x < 20 ? 'start' : 'middle';
       g.append(svg('text', { x: l.x, y: l.y + 4.6, 'text-anchor': anchor }, known ? l.name : '?'));
-      if (l.name === level.target) g.append(svg('text', { class: 'target-star', x: l.x + 1.6, y: l.y - 1.4 }, '★'));
+      // What you become, once you know it and can see it.
+      if (game.goal && known && l.name === game.goal) g.append(svg('text', { class: 'target-star', x: l.x + 1.6, y: l.y - 1.4 }, '★'));
       above.push(g);
     }
-    if (!game.over && Math.hypot(p.move.x - game.x, p.move.y - game.y) > 0.5) {
-      above.push(svg('line', { class: 'arrow', x1: game.x, y1: game.y, x2: p.move.x, y2: p.move.y, 'marker-end': 'url(#arrowhead)' }));
+    if (replay) {
+      const you = game.trail[Math.min(replay.step, game.trail.length - 1)];
+      const them = real.trail[Math.min(replay.step, real.trail.length - 1)];
+      above.push(svg('circle', { class: 'replay-real', cx: them.x, cy: them.y, r: them.r }));
+      above.push(svg('circle', { class: 'ghost', cx: you.x, cy: you.y, r: you.r }));
+      above.push(svg('text', { class: 'ghost-word', x: you.x, y: you.y - 1.6, 'text-anchor': 'middle' }, 'you'));
+      above.push(svg('text', { class: 'real-word', x: them.x, y: Math.max(them.y - them.r + 4.5, 1), 'text-anchor': 'middle' }, `real ${L.word}`));
+      const year = replay.step ? L.eras[replay.step - 1][0] : 'Start';
+      above.push(svg('text', { class: 'replay-year', x: 1, y: 6 }, String(year)));
+    } else {
+      if (!game.over && Math.hypot(p.move.x - game.x, p.move.y - game.y) > 0.5) {
+        above.push(svg('line', { class: 'arrow', x1: game.x, y1: game.y, x2: p.move.x, y2: p.move.y, 'marker-end': 'url(#arrowhead)' }));
+      }
+      const at = game.over ? game : p.move;
+      above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
+      above.push(svg('text', { class: 'ghost-word', x: at.x, y: at.y - 1.6, 'text-anchor': 'middle' },
+        game.over ? L.word : era[2]));
     }
-    const at = game.over ? game : p.move;
-    above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
-    above.push(svg('text', { class: 'ghost-word', x: at.x, y: at.y - 1.6, 'text-anchor': 'middle' },
-      game.over ? level.word : era[2]));
     $('below').replaceChildren(...below);
     $('above').replaceChildren(...above);
     return p;
@@ -169,11 +214,11 @@
   }
 
   function renderTimeline() {
-    const level = E.LEVELS[game.levelIndex];
+    const L = level();
     const top = Math.max(200, ...game.log.map((l) => l.speakers));
-    $('timeline').replaceChildren(...level.eras.map((e, i) => {
+    $('timeline').replaceChildren(...L.eras.map((e, i) => {
       const entry = game.log[i];
-      const last = i === level.eras.length - 1;
+      const last = i === L.eras.length - 1;
       if (entry) {
         const hit = entry.senses.some((s) => entry.wanted.includes(s));
         return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers` },
@@ -189,62 +234,103 @@
     }));
   }
 
+  // What you mean, and the journey that got you here, against the real one.
+  function renderMeanings() {
+    const L = level();
+    const mine = game.over ? (game.log[game.log.length - 1] || { senses: [] }).senses : meaningNow();
+    const scorned = game.over ? [] : E.scornedNow(game);
+    $('now-chips').replaceChildren(...(mine.length
+      ? mine.map((s) => el('span', { class: `chip${scorned.includes(s) ? ' bad' : ''}` }, s))
+      : [el('span', { class: 'chip bad' }, 'nothing at all')]));
+    const start = el('li', { class: 'start' }, el('span', { class: 'chip' }, L.start), el('span', { class: 'yr' }, 'start'));
+    $('journey').replaceChildren(start, ...game.log.map((l, i) => el('li', { class: l.faithful ? 'true' : 'astray', title: `Really: ${L.history[i]}` },
+      el('span', { class: 'chip' }, l.senses.length ? l.senses.join(' · ') : '—'),
+      el('span', { class: 'yr' }, `${l.year} ${l.faithful ? '✓' : '✗'}`))));
+    const done = game.log.length;
+    const reveal = L.eras.length - E.REVEAL;
+    const n = E.faithful(game);
+    $('course').replaceChildren(...(game.goal
+      ? [game.goal === L.target
+        ? `You kept close to history (${n} of ${done} centuries ✓), so you're becoming what ${L.word} means today: `
+        : `You strayed from history (${n} of ${done} centuries ✓), so your ${L.word} finds its own ending: `,
+      el('strong', {}, game.goal), '.']
+      : done
+        ? [`✓ means you meant what ${L.word} really meant then: ${n} of ${done} so far. Match it in ${E.ON_COURSE} of the first ${reveal} centuries to become what ${L.word} means today; stray, and it ends somewhere else.`]
+        : [`After each century you'll learn what ${L.word} really meant. Match it in ${E.ON_COURSE} of the first ${reveal} centuries to become what it means today; stray, and it ends somewhere else.`]));
+  }
+
   function render() {
-    const level = E.LEVELS[game.levelIndex];
+    const L = level();
     const era = E.eraOf(game);
     $('year').textContent = game.over ? 'Today' : era[0];
-    $('form').textContent = game.over ? level.word : era[2];
+    $('form').textContent = game.over ? L.word : era[2];
     $('speakers').textContent = game.speakers;
-    $('target').textContent = level.target + (level.targetMaxBreadth ? ' (narrowly)' : '');
+    const goal = game.goal;
+    $('target').textContent = goal || '?';
+    const max = goal && L.endings[goal].maxBreadth;
+    $('target-sub').textContent = goal
+      ? (max ? 'narrowly' : '')
+      : `revealed in ${L.eras[L.eras.length - E.REVEAL][0]}`;
     $('clue-box').hidden = game.over;
     $('clue').textContent = era[3];
+
     const scorned = E.scornedNow(game);
-    $('scorned-line').replaceChildren('People sneer at ',
-      ...scorned.flatMap((s, i) => [i ? ' and ' : '', el('strong', {}, s)]), ` this century: carrying it costs ${E.SCORN}.`);
+    const mine = game.over ? [] : meaningNow();
+    const stuck = scorned.filter((s) => mine.includes(s));
+    $('fashion-line').replaceChildren('Out of fashion now: ', ...words(scorned),
+      `. Each one in your circle costs ${E.SCORN} speakers.`,
+      ...(stuck.length ? [el('strong', { class: 'stuck' }, ` You mean ${stuck.join(' and ')} now: drift away from it!`)] : []));
+    const fads = E.fadNow(game);
+    $('fad-line').hidden = !fads.length || game.over;
+    $('fad-line').replaceChildren('✦ New fad: ', ...words(fads), `. +${E.FAD} this century, but out of fashion in ${
+      L.eras[Math.min(game.era + E.FAD_LIFE, L.eras.length - 1)][0]}.`);
+
     $('preview').hidden = game.over;
     $('breadth').hidden = game.over;
     $('breadth-help').hidden = game.over;
+    $('pass').hidden = game.over;
+    $('replay-btn').hidden = !game.over;
 
     const p = renderMap();
-    ghost = p.move;
+    if (!replay) ghost = p.move;
     renderTimeline();
+    renderMeanings();
     const n = p.senses.length;
     $('breadth-val').textContent = n > E.MAX_SENSES ? `${n} meanings: too vague!` : n ? `holds ${n} meaning${n === 1 ? '' : 's'}` : 'holds nothing';
     $('breadth-val').className = n > E.MAX_SENSES || !n ? 'neg' : '';
-    const narrowed = ghost.r < game.r;
-    const broadened = ghost.r > game.r;
-    $('narrow').setAttribute('aria-pressed', String(narrowed));
-    $('broaden').setAttribute('aria-pressed', String(broadened));
+    $('narrow').setAttribute('aria-pressed', String(ghost.r < game.r));
+    $('broaden').setAttribute('aria-pressed', String(ghost.r > game.r));
     $('narrow').disabled = game.over || game.r <= E.MIN_BREADTH;
     $('broaden').disabled = game.over || game.r >= E.MAX_BREADTH;
 
+    // What you'd mean after the drift: kept, new and dropped.
+    $('next-chips').replaceChildren(...[
+      ...p.senses.map((s) => el('span', { class: `chip ${mine.includes(s) ? 'kept' : 'new'}${scorned.includes(s) ? ' bad' : ''}` },
+        mine.includes(s) ? s : `+ ${s}`)),
+      ...mine.filter((s) => !p.senses.includes(s)).map((s) => el('span', { class: 'chip dropped' }, s)),
+    ]);
     // You can't know what the century wants, so senses show what they'd win either way.
-    $('reasons').replaceChildren(...(game.over ? [] : p.reasons.map((r) => el('li', { class: r.scorned ? 'scorned' : '' },
-      el('span', {}, r.text), r.sense && !r.scorned
+    $('reasons').replaceChildren(...(game.over ? [] : p.reasons.map((r) => el('li', { class: r.scorned ? 'scorned' : r.fad ? 'fad' : '' },
+      el('span', {}, r.text), r.sense && !r.scorned && !r.fad
         ? el('span', { class: 'amt pos' }, `+${r.ifPlain}`, el('span', { class: 'or' }, ` or +${r.ifWanted} if wanted`))
         : el('span', { class: `amt ${r.amount >= 0 ? 'pos' : 'neg'}` }, signed(r.amount))))));
     const [lo, hi] = p.range;
     $('delta').textContent = game.over ? '' : lo === hi ? signed(lo) : `${signed(lo)} to ${signed(hi)}`;
     $('delta').className = hi < 0 ? 'neg' : lo >= 0 ? 'pos' : '';
-    $('pass').textContent = game.over ? 'See how it ended' : `Let the ${ordinalCentury(era[0])} pass`;
-  }
-
-  const signed = (n) => (n > 0 ? `+${n}` : String(n));
-  function ordinalCentury(year) {
-    const c = Math.floor(year / 100) + 1;
-    const s = c % 100 >= 11 && c % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[c % 10] || 'th');
-    return `${c}${s} century`;
+    $('pass').textContent = `Let the ${ordinalCentury(era[0])} pass`;
   }
 
   function pass() {
     if (game.over) return showEnd();
-    const level = E.LEVELS[game.levelIndex];
+    const L = level();
     const before = E.eraOf(game)[0];
+    const hadGoal = game.goal;
     const p = E.advance(game, ghost);
+    $('floats').replaceChildren();
     const entry = game.log[game.log.length - 1];
-    const quoteOf = (name) => E.landmarks(level).find((l) => l.name === name).quote;
-    const at = (name) => E.landmarks(level).find((l) => l.name === name);
+    const at = (name) => E.senseAt(game, name);
     const hit = p.senses.filter((s) => entry.wanted.includes(s));
+    const really = L.history[game.log.length - 1];
 
     // On the map: what each sense paid, and what you missed.
     const from = [];
@@ -260,7 +346,8 @@
       if (!hit.includes(w)) { const l = at(w); float(l.x, l.y - 2.4, 'wanted', 'missed'); }
     }
     p.reasons.filter((r) => !r.sense).forEach((r, i) => {
-      float(game.x, game.y + game.r + 3.5 + i * 4.2, `${signed(r.amount)} ${r.text}`, 'bad');
+      const label = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' }[r.text] || 'too vague';
+      float(game.x, game.y + game.r + 3.5 + i * 4.2, `${signed(r.amount)} ${label}`, 'bad');
     });
 
     $('speakers-delta').textContent = signed(p.delta);
@@ -268,56 +355,81 @@
     void $('speakers-delta').offsetWidth;
     $('speakers-delta').classList.add('show');
 
-    const list = (names, bold) => names.flatMap((w, i) => [i ? ' and ' : '', el(bold.includes(w) ? 'strong' : 'span', {}, w)]);
     $('result').replaceChildren(
       el('span', { class: 'r-year' }, `${entry.year} is over. `),
-      'It wanted ', ...list(entry.wanted, hit), '. ',
+      'It wanted ', ...words(entry.wanted, hit), '. ',
       hit.length ? `You had ${hit.length === 2 ? 'both' : hit[0]}! ` : 'You had neither. ',
-      el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers`));
+      el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers. `),
+      el('span', { class: entry.faithful ? 'true' : 'astray' },
+        `Really, ${L.word} meant ${really} then ${entry.faithful ? '✓' : '✗'}`),
+      ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ A fad sprang up: ${entry.sprouted.join(', ')}.`)] : []),
+      ...(!hadGoal && game.goal ? [el('span', { class: 'reveal' }, ` ★ Now you know: you're becoming ${game.goal}.`)] : []));
+
+    const quoteOf = (name) => at(name).quote;
     const quote = p.senses.length ? el('q', {}, quoteOf(hit[0] || p.senses[0])) : el('span', {}, 'meaning nothing in particular');
-    const wantedLine = el('span', { class: 'w' }, 'It wanted ',
-      ...entry.wanted.flatMap((w, i) => [i ? ' and ' : '', el(hit.includes(w) ? 'strong' : 'span', {}, w)]), '.');
-    // Senses that have just appeared this century.
-    const fresh = game.over ? [] : E.landmarks(level, E.eraOf(game)[0]).filter((l) => l.from > before);
+    const fresh = game.over ? [] : E.landmarks(L, E.eraOf(game)[0]).filter((l) => l.from > before);
     const news = fresh.length ? el('span', { class: 'w' }, ...fresh.map((l) => (game.seen.includes(l.name)
-      ? `A new sense appears: ${l.name}. ` : 'A new sense appears somewhere. '))) : '';
+      ? `A new meaning appears: ${l.name}. ` : 'A new meaning appears somewhere. '))) : '';
     $('log').prepend(el('li', {}, el('span', { class: 'y' }, String(entry.year)), el('span', { class: 'f' }, entry.form),
-      quote, el('span', { class: p.delta >= 0 ? 'pos' : 'neg' }, ` ${signed(p.delta)}`), wantedLine, news));
+      quote, el('span', { class: p.delta >= 0 ? 'pos' : 'neg' }, ` ${signed(p.delta)}`),
+      el('span', { class: 'w' }, 'It wanted ', ...words(entry.wanted, hit), `. Really it meant ${really}.`), news));
     ghost = { x: game.x, y: game.y, r: game.r };
     render();
     updateCrowd(lost, from);
-    if (game.over) {
-      $('result').append(' The gold dashes are the perfect route.');
-      setTimeout(showEnd, 1800);
-    }
+    if (game.over) setTimeout(showEnd, 1800);
   }
 
   function showEnd() {
-    const level = E.LEVELS[game.levelIndex];
+    const L = level();
     const score = E.score(game);
-    const history = E.historyGame(game.levelIndex);
-    const hs = E.score(history);
+    const goal = game.goal;
+    const perfect = goal ? E.score(E.perfectGame(game.levelIndex, goal)) : null;
+    $('end-kicker').textContent = game.outcome === 'obsolete' ? '' : goal === L.target ? 'The real ending' : 'Another ending';
     $('end-title').textContent = {
-      arrived: `You became "${level.word}"`,
+      arrived: goal === L.target ? `You became "${L.word}"` : `In your world, ${L.word} means ${goal}`,
       survived: 'You survived, but as something else',
       obsolete: 'Obsolete',
     }[game.outcome];
     $('end-text').textContent = {
-      arrived: `In the last century you meant ${level.target}${level.targetMaxBreadth ? ', and nothing much else' : ''}, just as ${level.word} does today.`,
-      survived: `People still say you, but you don't mean ${level.target}${level.targetMaxBreadth ? ' (narrowly enough)' : ''}. Somewhere, another word does.`,
+      arrived: L.endings[goal] && L.endings[goal].text,
+      survived: goal ? `Your journey was leading to ${goal}, but you didn't mean it${L.endings[goal].maxBreadth ? ' narrowly enough' : ''} at the end. ${L.endings[goal].text}` : '',
       obsolete: 'Nobody says you any more. You live on in the backs of old dictionaries.',
-    }[game.outcome];
-    $('end-score').textContent = `${score}`;
-    $('end-history').textContent = score >= hs
-      ? `A perfect game! Following what ${level.word} really meant each century, the best anyone can score is ${hs}.`
-      : `The perfect route scores ${hs}: it follows what ${level.word} really meant each century, and knows what every century wants. It's the gold dashes on the map.`;
-    const isBest = saveBest(level.id, score);
-    $('end-best').textContent = isBest ? 'A new best for this word.' : `Your best for this word: ${bests()[level.id]}.`;
+    }[game.outcome] || '';
+    $('end-score').textContent = String(score);
+    $('end-perfect').textContent = perfect === null ? '—' : String(perfect) + (score >= perfect ? ' (you matched it!)' : '');
+    const isBest = saveBest(L.id, score);
+    $('end-best').textContent = isBest ? 'A new best for this word.' : `Your best for this word: ${stored(BEST_KEY)[L.id]}.`;
+    const found = game.outcome === 'arrived' ? saveEnding(L.id, goal) : (stored(ENDINGS_KEY)[L.id] || []);
+    const all = Object.keys(L.endings);
+    $('end-endings').replaceChildren(`Endings found for ${L.word}: ${found.length} of ${all.length} `,
+      ...all.map((e) => el('span', { class: `chip${found.includes(e) ? ' kept' : ' locked'}` }, found.includes(e) ? e : '?')));
+    $('end-table').replaceChildren(...game.log.map((l, i) => el('tr', { class: l.faithful ? 'true' : 'astray' },
+      el('td', {}, String(l.year)),
+      el('td', {}, ...(l.senses.length ? words(l.senses, l.wanted) : ['—'])),
+      el('td', {}, el(l.wanted.includes(L.history[i]) ? 'strong' : 'span', {}, L.history[i]), l.faithful ? ' ✓' : ''),
+      el('td', { class: 'wanted' }, l.wanted.join(', ')))));
     $('end-next').hidden = game.levelIndex >= E.LEVELS.length - 1;
-    showHistory = true;
     renderWords();
     render();
     if (!$('end').open) $('end').showModal();
+  }
+
+  // The replay: your circle and the real word's, century by century.
+  function startReplay() {
+    stopReplay();
+    replay = { step: 0 };
+    $('crowd').classList.add('away');
+    render();
+    replay.timer = setInterval(() => {
+      replay.step++;
+      if (replay.step > level().eras.length) { stopReplay(); render(); return; }
+      render();
+    }, REPLAY_STEP);
+  }
+  function stopReplay() {
+    if (replay) clearInterval(replay.timer);
+    replay = null;
+    $('crowd').classList.remove('away');
   }
 
   // Tap or drag on the map to choose where to drift.
@@ -331,7 +443,7 @@
   // A tap near a meaning goes to that meaning.
   function target(evt) {
     const p = pointAt(evt);
-    const near = E.landmarks(E.LEVELS[game.levelIndex], E.eraOf(game)[0])
+    const near = E.senses(game)
       .map((l) => ({ l, d: Math.hypot(l.x - p.x, l.y - p.y) }))
       .sort((a, b) => a.d - b.d)[0];
     const at = near && near.d <= 6 ? near.l : p;
@@ -377,12 +489,14 @@
   });
 
   $('rules-btn').addEventListener('click', () => $('rules').showModal());
+  $('replay-btn').addEventListener('click', startReplay);
+  $('end-replay').addEventListener('click', () => { $('end').close(); startReplay(); });
   $('end-next').addEventListener('click', () => { $('end').close(); start(game.levelIndex + 1); });
   $('end-again').addEventListener('click', () => { $('end').close(); start(game.levelIndex); });
   $('end-map').addEventListener('click', () => $('end').close());
 
   start(0);
   let seen = false;
-  try { seen = localStorage.getItem('etymon-seen-rules') === '1'; localStorage.setItem('etymon-seen-rules', '1'); } catch { /* fine */ }
+  try { seen = localStorage.getItem('etymon-seen-rules') === '2'; localStorage.setItem('etymon-seen-rules', '2'); } catch { /* fine */ }
   if (!seen) $('rules').showModal();
 })();
