@@ -129,18 +129,11 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .clue { margin: 4px 0 8px; font-family: Georgia, serif; font-style: italic; font-size: 19px; line-height: 1.3; color: var(--ink); }
 .tags { display: flex; flex-wrap: wrap; gap: 4px; }
 .tag { font-size: 13px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
-.tag.bad { border-color: var(--bad); color: var(--bad); }
 .tag.fad { border-color: var(--fad); color: var(--fad); }
 .tag.goal { color: var(--gold); border-color: rgba(242, 182, 74, 0.5); }
 
 /* If you drift here: what you'd mean, what it'd do, and the buttons. */
 .drift .chips { margin: 4px 0 6px; }
-.reasons { list-style: none; margin: 0; padding: 0; }
-.reasons li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-size: 14px; color: var(--muted); }
-.reasons .amt { font-variant-numeric: tabular-nums; font-weight: 700; }
-.total { margin: 4px 0 8px; font-size: 15px; }
-.total strong { font-variant-numeric: tabular-nums; }
-.total .or { color: var(--muted); font-weight: 400; font-size: 13px; }
 .breadth { display: flex; gap: 8px; margin-bottom: 8px; }
 .breadth button { flex: 1; white-space: nowrap; padding: 7px 10px; }
 .breadth button[aria-pressed="true"] { border-color: var(--you); color: var(--you); background: rgba(127, 214, 194, 0.12); }
@@ -153,8 +146,6 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .sense.held text { text-decoration: underline; }
 #map .sense.mine text { fill: var(--you); font-weight: 700; }
 #map .sense.mine circle { fill: var(--you); }
-#map .sense.scorned text { fill: var(--bad); }
-#map .sense .cross { stroke: var(--bad); stroke-width: 0.6; stroke-linecap: round; }
 #map .sense.fad text { fill: var(--fad); }
 #map .sense .spark { fill: var(--fad); font-size: 4px; text-decoration: none; }
 #map .sense.unknown circle { fill: var(--muted); opacity: 0.5; }
@@ -204,7 +195,6 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 50%; flex: none; }
 .key-you { border: 2px solid var(--you); background: rgba(127, 214, 194, 0.16); }
 .key-reach { border: 1.5px dashed var(--you); }
-.key-scorn { color: var(--bad); font-weight: 700; }
 .key-fad { color: var(--fad); font-weight: 400; }
 .key-unknown { background: var(--muted); opacity: 0.5; width: 6px !important; height: 6px !important; margin: 0 4px; }
 .key-star { color: var(--gold); font-weight: 400; }

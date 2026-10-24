@@ -111,7 +111,6 @@
   function renderMap() {
     const L = level();
     const era = E.eraOf(game);
-    const scorned = game.over ? [] : E.scornedNow(game);
     const fads = game.over ? [] : E.fadNow(game);
     const mine = game.over ? [] : meaningNow();
     const p = E.preview(game, ghost);
@@ -141,14 +140,11 @@
       const known = game.over || game.seen.includes(l.name);
       const cls = ['sense'];
       if (!known) cls.push('unknown');
-      if (scorned.includes(l.name)) cls.push('scorned');
       if (fads.includes(l.name)) cls.push('fad');
       if (mine.includes(l.name)) cls.push('mine');
       if (p.senses.includes(l.name) && !game.over) cls.push('held');
       const g = svg('g', { class: cls.join(' ') });
-      if (scorned.includes(l.name)) {
-        g.append(svg('path', { class: 'cross', d: `M${l.x - 1.2} ${l.y - 1.2}L${l.x + 1.2} ${l.y + 1.2}M${l.x + 1.2} ${l.y - 1.2}L${l.x - 1.2} ${l.y + 1.2}` }));
-      } else if (fads.includes(l.name)) {
+      if (fads.includes(l.name)) {
         g.append(svg('text', { class: 'spark', x: l.x, y: l.y + 1.3, 'text-anchor': 'middle' }, '✦'));
       } else {
         g.append(svg('circle', { cx: l.x, cy: l.y, r: known ? 1 : 0.7 }));
@@ -279,11 +275,10 @@
     $('year').textContent = game.over ? 'Today' : era[0];
     $('form').textContent = game.over ? L.word : era[2];
     $('speakers').textContent = game.speakers;
-    const scorned = game.over ? [] : E.scornedNow(game);
     const fads = game.over ? [] : E.fadNow(game);
     const mine = game.over ? (game.log[game.log.length - 1] || { senses: [] }).senses : meaningNow();
     $('now-chips').replaceChildren(...(mine.length
-      ? mine.map((s) => el('span', { class: `chip${scorned.includes(s) ? ' bad' : fads.includes(s) ? ' fad' : ''}` }, s))
+      ? mine.map((s) => el('span', { class: `chip${fads.includes(s) ? ' fad' : ''}` }, s))
       : [el('span', { class: 'chip bad' }, 'nothing at all')]));
 
     // Next: the century's clue, and what you can already see about it.
@@ -294,8 +289,7 @@
     $('clue').textContent = E.clueNow(game);
     const goal = game.goal;
     $('tags').replaceChildren(
-      ...scorned.map((s) => el('span', { class: 'tag bad', title: `Out of fashion: −${E.SCORN} while you carry it` }, `✕ ${s} −${E.SCORN}`)),
-      ...fads.map((s) => el('span', { class: 'tag fad', title: 'A new fad' }, `✦ ${s} +${E.FAD}`)),
+      ...fads.map((s) => el('span', { class: 'tag fad', title: 'A new fad' }, `✦ ${s}`)),
       el('span', { class: 'tag goal' }, goal
         ? `★ becoming ${goal}${L.endings[goal].maxBreadth ? ', narrowly' : ''}`
         : `★ becoming ? until ${L.eras[L.eras.length - E.REVEAL][0]}`));
@@ -310,22 +304,14 @@
     $('narrow').disabled = game.over || game.r <= E.MIN_BREADTH;
     $('broaden').disabled = game.over || game.r >= E.MAX_BREADTH;
 
-    // What you'd mean after the drift: kept, new and dropped, and what it does.
+    // What you'd mean after the drift: kept, new and dropped. What it does to
+    // your speakers only shows once the century has passed.
     const vague = p.senses.length > E.MAX_SENSES;
-    $('next-chips').replaceChildren(...(p.senses.length || mine.length ? [
-      ...p.senses.map((s) => el('span', { class: `chip ${mine.includes(s) ? 'kept' : 'new'}${scorned.includes(s) ? ' bad' : ''}${vague ? ' vague' : ''}` },
+    $('next-chips').replaceChildren(
+      ...p.senses.map((s) => el('span', { class: `chip ${mine.includes(s) ? 'kept' : 'new'}${vague ? ' vague' : ''}` },
         mine.includes(s) ? s : `+ ${s}`)),
-      ...mine.filter((s) => !p.senses.includes(s)).map((s) => el('span', { class: 'chip dropped' }, s)),
-    ] : []));
-    // You can't know what the century wants, so senses show what they'd win either way.
-    $('reasons').replaceChildren(...(game.over ? [] : p.reasons.filter((r) => !r.sense || r.scorned || r.fad || vague || !p.senses.length).map((r) => el('li', {},
-      el('span', {}, r.sense ? r.text : r.text.replace(/^./, (c) => c.toUpperCase())),
-      el('span', { class: `amt ${r.amount >= 0 ? 'pos' : 'neg'}` }, signed(r.amount))))));
-    const plain = p.reasons.filter((r) => r.sense && !r.scorned && !r.fad).length;
-    $('delta').replaceChildren(...(game.over ? [] : [
-      el('span', { class: p.range[1] < 0 ? 'neg' : p.range[0] >= 0 ? 'pos' : '' },
-        p.range[0] === p.range[1] ? signed(p.range[0]) : `${signed(p.range[0])} to ${signed(p.range[1])}`),
-      plain ? el('span', { class: 'or' }, ` (+3 a meaning, +18 if wanted)`) : '']));
+      ...(p.senses.length ? [] : [el('span', { class: 'chip bad' }, 'nothing at all')]),
+      ...mine.filter((s) => !p.senses.includes(s)).map((s) => el('span', { class: 'chip dropped' }, s)));
     $('pass').textContent = `Let the ${ordinalCentury(era[0])} pass`;
   }
 
@@ -370,6 +356,7 @@
     $('result').replaceChildren(
       el('span', { class: 'r-year' }, `${entry.year}: `),
       'it wanted ', ...words(entry.wanted, hit), '. ',
+      ...(entry.scorned.length ? [el('span', { class: 'astray' }, `${entry.scorned.join(' and ')} went out of fashion. `)] : []),
       el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers. `),
       el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
       ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
