@@ -22,11 +22,11 @@ The infrastructure is not in this repo. The Cloud Run service, image registry, s
 Check what's done before starting. Ask the user if unsure, and update these boxes as steps complete.
 
 - [x] Repo created from the skeleton (`scripts/new-game.sh`)
-- [ ] `etymon` entry added to `terraform/games.tf` in mrkyle7/cheetahmoongames, merged, and its workflow applied successfully
-- [ ] Card for the game added to `site/public/index.html` in mrkyle7/cheetahmoongames (can be the same pull request)
+- [x] `etymon` entry added to `terraform/games.tf` in mrkyle7/cheetahmoongames, merged, and its workflow applied successfully
+- [x] Card for the game added to `site/public/index.html` in mrkyle7/cheetahmoongames (can be the same pull request)
 - [x] The game's own icon in `public/icon.svg`, with the PNGs in `public/icons/` rendered from it, and the same art on its home page card
-- [ ] A push to `main` deployed successfully (Actions → CI/CD). Every push to `main` deploys; there is no setting or repo variable to turn on, so never tell anyone to set one (an old `DEPLOY_ENABLED` variable is gone).
-- [ ] `https://etymon.cheetahmoongames.com` loads over HTTPS (the certificate can take 15–60 minutes after the DNS record appears)
+- [x] A push to `main` deployed successfully (Actions → CI/CD). Every push to `main` deploys; there is no setting or repo variable to turn on, so never tell anyone to set one (an old `DEPLOY_ENABLED` variable is gone).
+- [x] `https://etymon.cheetahmoongames.com` loads over HTTPS (the certificate can take 15–60 minutes after the DNS record appears)
 
 ## Rules the game must keep
 
