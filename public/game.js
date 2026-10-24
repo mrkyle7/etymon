@@ -375,12 +375,10 @@
     return g;
   }
 
-  // Senses you can make out: those near you, the ones out of fashion, fads,
-  // and any you've made out before. Even today's meaning stays a "?" until
-  // you get near it.
+  // Senses you can make out: those near you, fads, and any you've made out
+  // before. Even today's meaning stays a "?" until you get near it.
   function look(g) {
     const seen = new Set(g.seen);
-    for (const name of scornedNow(g)) seen.add(name);
     for (const name of Object.keys(g.fads)) seen.add(name);
     for (const l of senses(g)) if (dist(l, g) <= SIGHT + g.r) seen.add(l.name);
     g.seen = [...seen];
