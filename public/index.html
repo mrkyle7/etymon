@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Etymon</title>
+  <meta name="description" content="Etymon: you are a word, drifting through meaning for a thousand years. Arrive at what you mean today before everyone forgets you.">
+  <!-- Icons and installing: see "Icons and installing" in ADDING_A_GAME.md. -->
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#16120c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Etymon">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="home" href="https://cheetahmoongames.com/" aria-label="More games from Cheetah Moon Games">&larr; Cheetah Moon Games</a>
+    <span class="account" id="account" aria-live="polite"></span>
+  </header>
+
+  <main>
+    <div class="title">
+      <h1>Etymon</h1>
+      <button type="button" class="link" id="rules-btn">How to play</button>
+    </div>
+    <p class="tagline">You are a word. Drift through a thousand years of meaning and arrive at what you mean today.</p>
+
+    <nav class="words" id="words" aria-label="Choose a word"></nav>
+
+    <section class="era" aria-live="polite">
+      <div class="form-wrap">
+        <span class="year" id="year">1300</span>
+        <span class="form" id="form">nyce</span>
+      </div>
+      <div class="era-stats">
+        <div><span class="label">Speakers</span><strong id="speakers">100</strong><span id="speakers-delta" class="bump"></span></div>
+        <div><span class="label">Becoming ★</span><strong id="target">pleasant</strong></div>
+      </div>
+      <div class="clue-box" id="clue-box">
+        <p class="clue"><span class="tag">Clue</span> <em id="clue"></em></p>
+        <p class="clue-help">Which meanings will people want words for this century? Guess, and cover them with your circle.</p>
+        <p class="scorned-line" id="scorned-line"></p>
+      </div>
+    </section>
+
+    <ol class="timeline" id="timeline" aria-label="Your speakers, century by century"></ol>
+    <p class="result" id="result" aria-live="polite"></p>
+
+    <div class="board">
+      <svg id="map" viewBox="-4 -4 108 108" role="img" aria-label="The map of meaning. Tap a meaning to drift toward it.">
+        <defs>
+          <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+            <path d="M0 0L10 5L0 10z" class="arrowhead"/>
+          </marker>
+        </defs>
+        <g id="below"></g>
+        <g id="crowd" class="crowd"></g>
+        <g id="above"></g>
+        <g id="floats"></g>
+      </svg>
+      <div class="breadth" id="breadth" role="group" aria-label="Breadth">
+        <button type="button" id="narrow" aria-pressed="false" aria-label="Narrow a little: hold fewer meanings">&minus; Narrow</button>
+        <span id="breadth-val"></span>
+        <button type="button" id="broaden" aria-pressed="false" aria-label="Broaden a lot: hold more meanings">Broaden +</button>
+      </div>
+      <p class="breadth-help" id="breadth-help">Once a century: broaden a lot, or narrow a little. Grow too big and it takes centuries to shrink.</p>
+      <div class="controls">
+        <button type="button" class="primary" id="pass">Let the century pass</button>
+      </div>
+    </div>
+
+    <section class="preview" id="preview" aria-live="polite">
+      <h2>If you drift here, this century you&rsquo;d get&hellip;</h2>
+      <ul id="reasons"></ul>
+      <p class="total">Speakers <strong id="delta"></strong></p>
+    </section>
+
+
+    <details class="chronicle" open>
+      <summary>Chronicle</summary>
+      <ol id="log"></ol>
+    </details>
+  </main>
+
+  <dialog id="rules">
+    <h2>Etymon</h2>
+    <p class="lede">Words wander. <em>Nice</em> once meant foolish; <em>silly</em> meant blessed; a <em>girl</em> could be a boy. You are one of these words, at the start of its journey.</p>
+    <p>The map is <strong>meaning</strong>. Each dot is a sense, and your circle holds the senses you carry. The little dots inside it are your <strong>speakers</strong>: the people who say you. Each century:</p>
+    <ol class="steps">
+      <li><b>1</b><span><strong>Read the clue.</strong> Each century wants words for two meanings, and the clue hints which. You only find out afterwards.</span></li>
+      <li><b>2</b><span><strong>Tap a meaning</strong> on the map to drift your word toward it. You can only drift as far as the dashed ring.</span></li>
+      <li><b>3</b><span><em>Optional:</em> <strong>broaden</strong> a lot, or <strong>narrow</strong> a little. Broad is a safer guess, but grow too big and it takes centuries to shrink.</span></li>
+      <li><b>4</b><span><strong>Let the century pass.</strong> New speakers walk in from each meaning you hold, far more from the wanted ones; some forget you.</span></li>
+    </ol>
+    <p class="legend">
+      <span><i class="key-you"></i>you, and your speakers</span>
+      <span><i class="key-reach"></i>how far you can drift this century</span>
+      <span><b class="key-scorn">✕</b>scorned this century: carrying it costs speakers</span>
+      <span><i class="key-unknown"></i>? too far away to make out. Drift closer.</span>
+      <span><b class="key-star">★</b>where you're going</span>
+    </p>
+    <ul>
+      <li>Every meaning you hold wins <strong>+3</strong> speakers, or <strong>+18</strong> if it's one the century wanted.</li>
+      <li>Hold more than three and you're <strong>too vague</strong> (−10 for each extra). Hold none and nobody knows what you mean (−20). Every century, 10 people forget you anyway.</li>
+      <li>New meanings appear as the centuries pass, and distant ones are only a <strong>?</strong> until you drift near.</li>
+      <li>Reach zero speakers and you're <strong>obsolete</strong>. Hold today's meaning (★) in the last century for <strong>+100</strong>. The bars above the map show how you're doing.</li>
+    </ul>
+    <p class="small">At the end you'll see the perfect route: what the word really meant each century, played knowing what every century wanted.</p>
+    <form method="dialog"><button class="primary">Begin</button></form>
+  </dialog>
+
+  <dialog id="end">
+    <h2 id="end-title"></h2>
+    <p id="end-text"></p>
+    <p class="big" id="end-score"></p>
+    <p id="end-history"></p>
+    <p class="small" id="end-best"></p>
+    <div class="end-buttons">
+      <button type="button" class="primary" id="end-next">Next word</button>
+      <button type="button" id="end-again">Try again</button>
+      <button type="button" id="end-map">See the map</button>
+    </div>
+  </dialog>
+
+  <script src="/game.js"></script>
+  <script src="/app.js"></script>
+  <script>
+    // Every game shares one sign-in, at cheetahmoongames.com. Its page also
+    // creates accounts and resets forgotten passwords.
+    fetch('/api/me').then((r) => r.json()).then((me) => {
+      const el = document.getElementById('account');
+      if (me.signedIn) {
+        const name = document.createElement('strong');
+        name.textContent = me.name;
+        el.append('Signed in as ', name);
+      } else {
+        const a = document.createElement('a');
+        a.href = me.loginUrl;
+        a.textContent = 'Sign in';
+        el.append(a);
+      }
+    }).catch(() => {});
+
+    // Lets players install the game on their phone or desktop.
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
+</body>
+</html>
