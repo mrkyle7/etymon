@@ -325,6 +325,7 @@
     const entry = game.log[game.log.length - 1];
     const at = (name) => E.senseAt(game, name);
     const hit = p.senses.filter((s) => entry.wanted.includes(s));
+    const stung = p.senses.filter((s) => entry.scorned.includes(s));
     const really = L.history[game.log.length - 1];
 
     // On the map: what each sense paid, and what you missed.
@@ -356,7 +357,7 @@
     $('result').replaceChildren(
       el('span', { class: 'r-year' }, `${entry.year}: `),
       'it wanted ', ...words(entry.wanted, hit), '. ',
-      ...(entry.scorned.length ? [el('span', { class: 'astray' }, `${entry.scorned.join(' and ')} went out of fashion. `)] : []),
+      ...(entry.scorned.length ? [el('span', { class: stung.length ? 'astray' : '' }, ...words(entry.scorned, stung), ' went out of fashion. ')] : []),
       el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers. `),
       el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
       ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
