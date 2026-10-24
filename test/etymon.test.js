@@ -13,7 +13,12 @@ test('every word is well formed: its senses, centuries and history', () => {
     assert.ok(names.has(L.target), `${L.id}: target`);
     assert.strictEqual(L.history.length, L.eras.length, `${L.id}: a history step per century`);
     for (const h of L.history) assert.ok(names.has(h), `${L.id}: history ${h}`);
-    L.eras.forEach(([year, needed, form, clue, scorned], i) => {
+    L.eras.forEach(([year, needed, form, clue, scorned, [alt, altClue]], i) => {
+      assert.ok(altClue && alt.length === 2, `${L.id} ${year}: a second pair it might want, with its clue`);
+      for (const n of alt) {
+        assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: ${n} exists by then`);
+        assert.ok(!scorned.includes(n), `${L.id} ${year}: ${n} isn't both wanted and out of fashion`);
+      }
       assert.ok(Number.isInteger(year) && form && clue, `${L.id}: ${year}`);
       assert.ok(scorned.length, `${L.id} ${year}: scorns something`);
       for (const n of scorned) {
@@ -79,8 +84,8 @@ test('the ending depends on how closely the journey followed history', () => {
     assert.strictEqual(true_.goal, null, 'unknown until the last centuries');
     E.advance(true_, { x: true_.x, y: true_.y, r: true_.r });
   }
-  // Staying put on "ignorant" never means what nice really meant.
-  assert.strictEqual(E.faithful(true_), 0);
+  // Staying put on "ignorant" and "foolish" means what nice really meant only in 1300.
+  assert.strictEqual(E.faithful(true_), 1);
   assert.notStrictEqual(true_.goal, L.target);
   assert.strictEqual(true_.goal, 'foolish', 'the other ending nearest you');
   const real = E.perfectGame(0);
@@ -110,7 +115,7 @@ test('moves are limited to the reach, the map, and the breadth change', () => {
   assert.strictEqual(m.r, g.r + E.BROADEN);
   assert.strictEqual(E.constrain(g, { x: g.x, y: g.y, r: 6 }).r, g.r - E.NARROW, 'narrowing is slow');
   assert.ok(E.NARROW < E.BROADEN);
-  assert.strictEqual(E.constrain(g, { x: -50, y: -50, r: 0 }).x, 0);
+  assert.strictEqual(E.constrain({ ...g, x: 2, y: 2 }, { x: -50, y: -50, r: 0 }).x, 0);
   assert.ok(E.constrain(g, { x: g.x, y: g.y, r: 0 }).r >= E.MIN_BREADTH);
 });
 
@@ -135,9 +140,9 @@ test('needed senses pay more, scorned ones cost, as do vagueness and emptiness',
   assert.ok(needed.needed && needed.amount > plain.amount);
 
   const start = E.newGame(0);
-  assert.deepStrictEqual(E.scornedNow(start), ['ignorant']);
-  assert.ok(start.seen.includes('ignorant'), 'scorned senses are always visible');
-  const scorned = E.preview(start, { x: start.x, y: start.y, r: 5 }).reasons.find((r) => r.sense === 'ignorant');
+  assert.deepStrictEqual(E.scornedNow(start), ['shy']);
+  assert.ok(start.seen.includes('shy'), 'out of fashion senses are always visible');
+  const scorned = E.preview(start, { x: at('shy').x, y: at('shy').y, r: 5 }).reasons.find((r) => r.sense === 'shy');
   assert.ok(scorned.scorned && scorned.amount === -E.SCORN && scorned.ifWanted === -E.SCORN);
 
   const empty = E.newGame(0);
@@ -175,7 +180,7 @@ test('drifting with purpose beats staying put', () => {
   E.LEVELS.forEach((L, i) => {
     const stay = E.newGame(i);
     while (!stay.over) E.advance(stay, { x: stay.x, y: stay.y, r: stay.r });
-    assert.notStrictEqual(stay.outcome, 'arrived', L.id);
+    assert.ok(!(stay.outcome === 'arrived' && stay.goal === L.target), `${L.id}: staying put never becomes the real word`);
     assert.ok(E.score(E.perfectGame(i, stay.goal)) > E.score(stay), `${L.id}: even its own ending`);
     assert.ok(E.score(E.historyGame(i)) > E.score(stay), L.id);
   });
@@ -210,4 +215,23 @@ test('the log tells you afterwards what each century wanted', () => {
   const g = E.newGame(2);
   E.advance(g, { x: g.x, y: g.y });
   assert.deepStrictEqual(g.log[0].wanted, E.LEVELS[2].eras[0][1]);
+});
+
+test('each century wants what is nearer your word, so the clues follow your path', () => {
+  const L = E.LEVELS[0];
+  const near = E.newGame(0);
+  assert.strictEqual(E.clueNow(near), L.eras[0][3]);
+  const at = (name) => E.landmarks(L).find((l) => l.name === name);
+  const far = E.newGame(0);
+  far.x = at('strange').x; far.y = at('strange').y;
+  E.advance(far, { x: far.x, y: far.y }); // 1300 passes near strange and coy
+  assert.deepStrictEqual(far.log[0].wanted, L.eras[0][1], 'chosen when the century began');
+  // 1400 begins near strange: it wants strange and delicate.
+  assert.deepStrictEqual(E.wantedNow(far), L.eras[1][5][0]);
+  assert.strictEqual(E.clueNow(far), L.eras[1][5][1]);
+});
+
+test('nice starts out meaning both ignorant and foolish, as its story says', () => {
+  const g = E.newGame(0);
+  assert.deepStrictEqual(E.preview(g, { x: g.x, y: g.y, r: g.r }).senses.sort(), ['foolish', 'ignorant']);
 });

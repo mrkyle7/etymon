@@ -3,15 +3,30 @@
   --ink: #e9dcc0; --gold: #f2b64a; --gold-ink: #241805; --you: #7fd6c2; --bad: #ef7d6a; --good: #9ad77f; --fad: #d7a3f0;
 }
 * { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
-  margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+  margin: 0; background: var(--bg); color: var(--text);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 a { color: var(--gold); text-underline-offset: 3px; }
 a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 [hidden] { display: none !important; }
+.label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
 
-/* Every game: a way back to the others, and who's signed in. */
+button {
+  font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 14px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 700; }
+button.link { background: none; border: 0; color: var(--gold); text-decoration: underline; padding: 0; }
+button.quiet { background: none; border-color: transparent; color: var(--muted); padding: 6px 10px; }
+button.quiet:hover { color: var(--text); }
+
+/* The start screen. Every game: a way back to the others, and who's signed in. */
 .bar {
   display: flex; justify-content: space-between; align-items: center; gap: 16px;
   padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
@@ -21,74 +36,46 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-
 .bar .home:hover { color: var(--text); }
 .bar .account { color: var(--muted); text-align: right; }
 .bar .account strong { color: var(--text); }
-
-main { max-width: 720px; margin: 0 auto; padding: 12px 16px 48px; }
-.top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 10px; }
-h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(30px, 7vw, 40px); margin: 0; font-weight: 700; letter-spacing: 0.01em; }
-h3 { font-size: 15px; margin: 14px 0 6px; color: var(--muted); }
-.label { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
-
-button {
-  font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line);
-  border-radius: 8px; padding: 8px 14px; cursor: pointer;
+.menu-main { max-width: 760px; margin: 0 auto; padding: 28px 16px 48px; }
+h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw, 60px); margin: 0; font-weight: 700; letter-spacing: 0.01em; }
+.tagline { color: var(--muted); margin: 6px 0 20px; font-size: 17px; }
+.word-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.word-card {
+  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 14px; border-radius: 12px; background: var(--panel);
 }
-button:hover:not(:disabled) { border-color: var(--muted); }
-button:disabled { opacity: 0.4; cursor: not-allowed; }
-button.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); font-weight: 700; }
-button.link { background: none; border: 0; color: var(--gold); text-decoration: underline; padding: 0; margin-left: auto; }
+.word-card:hover { border-color: var(--gold); }
+.word-card .w { font-family: Georgia, serif; font-style: italic; font-size: 28px; color: var(--you); }
+.word-card .b { color: var(--ink); font-size: 14px; line-height: 1.35; }
+.word-card .meta { color: var(--muted); font-size: 13px; margin-top: auto; }
 
-.words { display: flex; flex-wrap: wrap; gap: 6px; }
-.words button { font-family: Georgia, serif; font-style: italic; font-size: 16px; padding: 5px 11px; }
-.words button[aria-current="true"] { border-color: var(--gold); color: var(--gold); }
-.words .best { font-family: system-ui, sans-serif; font-style: normal; font-size: 12px; color: var(--muted); margin-left: 6px; }
-
-.play { display: grid; gap: 10px; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
-
-/* The century: its year, the word's spelling, and the clue. */
-.era-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
-.form-wrap { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
-.year { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 18px; }
-.form { font-family: Georgia, serif; font-style: italic; font-size: clamp(26px, 6vw, 34px); color: var(--you); }
-.era-stats { display: flex; gap: 16px; }
-.era-stats strong { font-size: 19px; font-variant-numeric: tabular-nums; }
-.era-stats .sub { display: block; font-size: 12px; color: var(--muted); }
-.bump { display: inline-block; margin-left: 6px; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; }
-.bump.show { animation: bump 2.4s ease-out; }
-@keyframes bump { 0% { opacity: 0; transform: translateY(6px); } 15%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
-
-.clue-box { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
-.clue { margin: 0; font-size: 17px; line-height: 1.35; }
-.clue em { color: var(--ink); font-family: Georgia, serif; }
-.clue .tag {
-  display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-  background: var(--gold); color: var(--gold-ink); border-radius: 4px; padding: 2px 6px; margin-right: 4px; vertical-align: 2px;
+/* The game: the whole screen, nothing to scroll. */
+.game { position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); background: var(--bg); }
+.game-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 8px; padding-top: max(4px, env(safe-area-inset-top)); border-bottom: 1px solid var(--line);
 }
-.clue-help, .warn, .fad-line { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.35; }
-.warn strong { color: var(--bad); }
-.warn .stuck { display: block; }
-.fad-line, .fad-line strong { color: var(--fad); }
-
-/* Progress: a bar of speakers for every century, and what the last one did. */
-.timeline { list-style: none; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 0 0 6px; padding: 0; }
-.timeline li { display: flex; flex-direction: column; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
-.timeline .bar-wrap {
-  width: 100%; height: 34px; display: flex; align-items: flex-end; justify-content: center;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+.game-title { color: var(--muted); font-size: 14px; }
+.game-title em { font-family: Georgia, serif; color: var(--text); font-size: 16px; }
+.stage {
+  --side: 380px; --map: min(calc(100vw - var(--side) - 36px), calc(100dvh - 70px));
+  display: grid; grid-template-columns: var(--map) var(--side); justify-content: center; align-items: start;
+  gap: 12px; padding: 12px; min-height: 0;
 }
-.timeline .bar { width: 60%; min-height: 2px; border-radius: 3px 3px 0 0; transition: height 0.6s; }
-.timeline .bar.up { background: var(--good); }
-.timeline .bar.down { background: var(--bad); }
-.timeline .ghost-bar { background: var(--you); opacity: 0.5; }
-.timeline .n { font-size: 13px; font-weight: 700; min-height: 1.2em; }
-.timeline .yr { font-size: 11px; color: var(--muted); }
-.timeline .done.hit .n { color: var(--gold); }
-.timeline .now .bar-wrap { border-color: var(--you); border-width: 2px; }
-.timeline .now .n { color: var(--you); }
-.timeline .later { opacity: 0.5; }
-.timeline .later:last-child { opacity: 0.8; }
-.timeline .later:last-child .n { color: var(--gold); }
-.result { margin: 0; min-height: 1.4em; color: var(--muted); font-size: 15px; line-height: 1.4; }
+.board { position: relative; min-height: 0; min-width: 0; }
+#map {
+  display: block; width: var(--map); height: var(--map); touch-action: none; cursor: crosshair; user-select: none;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+}
+.side { display: flex; flex-direction: column; gap: 10px; max-height: var(--map); overflow: auto; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+
+/* What the last century did: a note over the map. */
+.result {
+  position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(92%, 640px); margin: 0;
+  background: rgba(22, 18, 12, 0.92); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+  color: var(--muted); font-size: 14px; line-height: 1.4; pointer-events: none;
+}
+.result em { color: var(--ink); font-family: Georgia, serif; }
 .result .r-year { color: var(--text); font-weight: 700; }
 .result strong { color: var(--gold); }
 .result strong.pos { color: var(--good); }
@@ -98,8 +85,69 @@ button.link { background: none; border: 0; color: var(--gold); text-decoration: 
 .result .fadnote { color: var(--fad); }
 .result .reveal { color: var(--gold); font-weight: 700; }
 
+/* Now: your word, what it means, and your speakers. */
+.card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.year { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 17px; }
+.form { font-family: Georgia, serif; font-style: italic; font-size: 30px; color: var(--you); line-height: 1; }
+.speakers { margin-left: auto; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.speakers strong { color: var(--text); font-size: 20px; font-variant-numeric: tabular-nums; }
+.bump { display: inline-block; margin-left: 6px; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; }
+.bump.show { animation: bump 2.4s ease-out; }
+@keyframes bump { 0% { opacity: 0; transform: translateY(6px); } 15%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; min-height: 26px; }
+.chip {
+  display: inline-block; font-family: Georgia, serif; font-size: 16px; padding: 1px 9px; border-radius: 999px;
+  border: 1px solid var(--you); background: rgba(127, 214, 194, 0.08); color: var(--you);
+}
+.chip.new { border-style: dashed; }
+.chip.dropped { border-color: var(--line); background: none; text-decoration: line-through; color: var(--muted); }
+.chip.bad { border-color: var(--bad); color: var(--bad); background: rgba(239, 125, 106, 0.08); }
+.chip.fad { border-color: var(--fad); color: var(--fad); }
+.chip.vague { border-color: var(--bad); }
+.chip.locked { border-color: var(--line); color: var(--muted); background: none; }
+
+.timeline { list-style: none; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin: 8px 0 0; padding: 0; }
+.timeline li { display: flex; flex-direction: column; align-items: center; gap: 1px; font-variant-numeric: tabular-nums; }
+.timeline .bar-wrap {
+  width: 100%; height: 26px; display: flex; align-items: flex-end; justify-content: center;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 5px; overflow: hidden;
+}
+.timeline .bar { width: 60%; min-height: 2px; border-radius: 3px 3px 0 0; transition: height 0.6s; }
+.timeline .bar.up { background: var(--good); }
+.timeline .bar.down { background: var(--bad); }
+.timeline .ghost-bar { background: var(--you); opacity: 0.5; }
+.timeline .mark { font-size: 12px; font-weight: 700; min-height: 1.2em; color: var(--you); }
+.timeline .mark.true { color: var(--good); }
+.timeline .mark.astray { color: var(--bad); }
+.timeline .yr { font-size: 10px; color: var(--muted); }
+.timeline .now .bar-wrap { border-color: var(--you); border-width: 2px; }
+.timeline .later { opacity: 0.5; }
+.timeline .later:last-child { opacity: 0.8; }
+.timeline .later:last-child .mark { color: var(--gold); }
+
+/* Next: the century's clue. */
+.clue { margin: 4px 0 8px; font-family: Georgia, serif; font-style: italic; font-size: 19px; line-height: 1.3; color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 13px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
+.tag.bad { border-color: var(--bad); color: var(--bad); }
+.tag.fad { border-color: var(--fad); color: var(--fad); }
+.tag.goal { color: var(--gold); border-color: rgba(242, 182, 74, 0.5); }
+
+/* If you drift here: what you'd mean, what it'd do, and the buttons. */
+.drift .chips { margin: 4px 0 6px; }
+.reasons { list-style: none; margin: 0; padding: 0; }
+.reasons li { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-size: 14px; color: var(--muted); }
+.reasons .amt { font-variant-numeric: tabular-nums; font-weight: 700; }
+.total { margin: 4px 0 8px; font-size: 15px; }
+.total strong { font-variant-numeric: tabular-nums; }
+.total .or { color: var(--muted); font-weight: 400; font-size: 13px; }
+.breadth { display: flex; gap: 8px; margin-bottom: 8px; }
+.breadth button { flex: 1; white-space: nowrap; padding: 7px 10px; }
+.breadth button[aria-pressed="true"] { border-color: var(--you); color: var(--you); background: rgba(127, 214, 194, 0.12); }
+.pass { width: 100%; font-size: 17px; padding: 11px 16px; }
+.over .pass + .pass { margin-top: 8px; }
+
 /* The map. */
-#map { display: block; width: 100%; height: auto; touch-action: none; cursor: crosshair; user-select: none; }
 #map .sense circle { fill: var(--ink); }
 #map .sense text { fill: var(--ink); font-size: 3.8px; font-family: Georgia, serif; }
 #map .sense.held text { text-decoration: underline; }
@@ -128,7 +176,7 @@ button.link { background: none; border: 0; color: var(--gold); text-decoration: 
 #map .trail { fill: none; stroke: var(--you); stroke-width: 0.6; stroke-opacity: 0.8; }
 #map .history-step { fill: var(--gold); fill-opacity: 0.04; stroke: var(--gold); stroke-opacity: 0.35; stroke-width: 0.3; stroke-dasharray: 1 1; }
 #map .history { fill: none; stroke: var(--gold); stroke-width: 0.6; stroke-dasharray: 1.5 1.2; }
-#map .replay-real { fill: var(--gold); fill-opacity: 0.1; stroke: var(--gold); stroke-width: 0.6; transition: all 0.6s; }
+#map .replay-real { fill: var(--gold); fill-opacity: 0.1; stroke: var(--gold); stroke-width: 0.6; }
 #map .real-word { fill: var(--gold); font-size: 3.6px; font-family: Georgia, serif; font-style: italic; font-weight: 700; }
 #map .replay-year { fill: var(--text); font-size: 6px; font-weight: 800; font-family: system-ui, sans-serif; }
 #map .target-star { fill: var(--gold); font-size: 4.5px; }
@@ -136,75 +184,15 @@ button.link { background: none; border: 0; color: var(--gold); text-decoration: 
 #map .arrow { stroke: var(--you); stroke-width: 0.7; }
 #map .arrowhead { fill: var(--you); }
 
-.breadth { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 6px 0 2px; }
-#breadth-val { min-width: 9em; text-align: center; color: var(--muted); font-size: 14px; }
-#breadth-val.neg { color: var(--bad); font-weight: 700; }
-.breadth button { white-space: nowrap; padding: 8px 12px; }
-.breadth button[aria-pressed="true"] { border-color: var(--you); color: var(--you); background: rgba(127, 214, 194, 0.12); }
-.breadth-help { margin: 0; text-align: center; color: var(--muted); font-size: 13px; }
-.controls { display: flex; justify-content: center; margin: 8px 0 2px; }
-.controls .primary { font-size: 18px; padding: 11px 24px; width: min(100%, 360px); }
-
-/* What you mean, and where you'd go. */
-.row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-.row .label { flex: none; min-width: 7.5em; }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.chip {
-  display: inline-block; font-family: Georgia, serif; font-size: 15px; padding: 1px 8px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
-}
-.chip.kept { border-color: var(--you); color: var(--you); }
-.chip.new { border-color: var(--you); color: var(--you); border-style: dashed; }
-.chip.dropped { text-decoration: line-through; color: var(--muted); opacity: 0.7; }
-.chip.bad { border-color: var(--bad); color: var(--bad); }
-.chip.locked { color: var(--muted); }
-.journey { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 2px; align-items: flex-start; }
-.journey li { display: inline-flex; flex-direction: column; align-items: center; }
-.journey .chip { font-size: 13px; }
-.journey .yr { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.journey .true .chip { border-color: var(--good); }
-.journey .true .yr { color: var(--good); }
-.journey .astray .yr { color: var(--bad); }
-.course { margin: 2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
-.course strong { color: var(--gold); }
-
-.preview ul { list-style: none; margin: 0; padding: 0; }
-.preview li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
-.preview li .amt { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
-.preview li.scorned span:first-child { color: var(--bad); }
-.preview li.fad span:first-child { color: var(--fad); }
-.preview li .or { color: var(--muted); font-weight: 400; }
-.preview .total { margin: 6px 0 0; text-align: right; }
-.pos { color: var(--good); }
-.neg { color: var(--bad); }
-
-.chronicle summary { cursor: pointer; color: var(--muted); }
-.chronicle ol { list-style: none; padding: 0; margin: 8px 0 0; max-height: 40vh; overflow: auto; }
-.chronicle li { padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-.chronicle li .y { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; }
-.chronicle li .f { font-family: Georgia, serif; font-style: italic; color: var(--you); margin-right: 8px; }
-.chronicle li .w { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
-.chronicle li .w strong { color: var(--gold); }
-.chronicle li q { color: var(--ink); font-family: Georgia, serif; }
-
-/* Wide screens: the map on the left, everything else beside it. */
-@media (min-width: 960px) {
-  main { max-width: 1280px; }
-  .play {
-    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); align-items: start;
-    grid-template-areas: "board era" "board progress" "board meanings" "board preview" "board chronicle";
-    grid-template-rows: auto auto auto auto 1fr;
-  }
-  .era { grid-area: era; }
-  .progress { grid-area: progress; }
-  .meanings { grid-area: meanings; }
-  .preview { grid-area: preview; }
-  .chronicle { grid-area: chronicle; }
-  .board { grid-area: board; position: sticky; top: 8px; }
-  /* Keep the map, its buttons and the pass button on one screen. */
-  #map { width: min(100%, calc(100vh - 230px)); margin: 0 auto; }
+/* Narrow or tall screens: the map on top, the cards below, scrolling within the game. */
+@media (max-width: 820px), (max-aspect-ratio: 1/1) {
+  .stage { --map: min(calc(100vw - 16px), 62dvh); grid-template-columns: minmax(0, 1fr); grid-template-rows: max-content max-content; overflow: auto; padding: 8px; gap: 8px; }
+  #map { margin: 0 auto; }
+  .result { position: static; transform: none; width: auto; margin-top: 6px; }
+  .side { overflow: visible; max-height: none; }
 }
 
+/* How to play, and the end. */
 .steps { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
 .steps li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line); font-size: 15px; line-height: 1.4; }
 .steps li b {
@@ -227,6 +215,7 @@ dialog {
 }
 dialog::backdrop { background: rgba(10, 8, 4, 0.75); }
 dialog h2 { font-family: Georgia, serif; font-size: 26px; color: var(--text); margin: 0 0 8px; }
+dialog h3 { font-size: 15px; margin: 14px 0 6px; color: var(--muted); }
 dialog .lede { line-height: 1.5; }
 dialog ul { padding-left: 18px; line-height: 1.5; }
 dialog form { margin-top: 12px; text-align: right; }
@@ -248,6 +237,5 @@ dialog form { margin-top: 12px; text-align: right; }
 .end-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
 
 @media (max-width: 520px) {
-  #breadth-val { min-width: 0; }
   .compare td.wanted, .compare th:last-child { display: none; }
 }
