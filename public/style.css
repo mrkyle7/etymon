@@ -82,6 +82,9 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .result .true { color: var(--good); }
 .result .astray { color: var(--bad); }
 .result .fadnote { color: var(--fad); }
+.result .grade.best, .result .grade.good { color: var(--good); font-weight: 700; }
+.result .grade.fair { color: var(--gold); font-weight: 700; }
+.result .grade.poor { color: var(--bad); font-weight: 700; }
 .result .reveal { color: var(--gold); font-weight: 700; }
 
 /* Now: your word, what it means, and your speakers. */
@@ -90,6 +93,9 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .form { font-family: Georgia, serif; font-style: italic; font-size: 30px; color: var(--you); line-height: 1; }
 .blurb { margin: 0 0 6px; color: var(--muted); font-family: Georgia, serif; font-style: italic; font-size: 13px; line-height: 1.3; }
 .speakers { margin-left: auto; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.par-note { display: block; text-align: right; font-size: 12px; }
+.par-note.ahead { color: var(--good); }
+.par-note.behind { color: var(--bad); }
 .speakers strong { color: var(--text); font-size: 20px; font-variant-numeric: tabular-nums; }
 .bump { display: inline-block; margin-left: 6px; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; }
 .bump.show { animation: bump 2.4s ease-out; }
@@ -113,8 +119,11 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
   background: var(--bg); border: 1px solid var(--line); border-radius: 5px; overflow: hidden;
 }
 .timeline .bar { width: 60%; min-height: 2px; border-radius: 3px 3px 0 0; transition: height 0.6s; }
-.timeline .bar.up { background: var(--good); }
-.timeline .bar.down { background: var(--bad); }
+.timeline .bar-wrap { position: relative; }
+.timeline .bar.best, .timeline .bar.good { background: var(--good); }
+.timeline .bar.fair { background: var(--gold); }
+.timeline .bar.poor { background: var(--bad); }
+.timeline .par { position: absolute; left: 8%; right: 8%; height: 0; border-top: 1.5px dashed var(--gold); opacity: 0.8; }
 .timeline .ghost-bar { background: var(--you); opacity: 0.5; }
 .timeline .mark { font-size: 12px; font-weight: 700; min-height: 1.2em; color: var(--you); }
 .timeline .mark.true { color: var(--good); }
@@ -157,6 +166,15 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .ghost { fill: var(--you); fill-opacity: 0.1; stroke: var(--you); stroke-width: 0.6; }
 #map .ghost.vague { stroke: var(--bad); stroke-dasharray: 1.2 0.8; }
 #map .ghost-word { fill: var(--you); font-size: 4px; font-family: Georgia, serif; font-style: italic; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 0.9px; stroke-linejoin: round; }
+#map .ghost-word .count { font-family: system-ui, sans-serif; font-style: normal; font-weight: 800; font-size: 3.6px; }
+#map .ghost-word .count.ahead { fill: var(--good); }
+#map .ghost-word .count.behind { fill: var(--bad); }
+#map .verdict-wanted { fill: none; stroke: var(--gold); stroke-width: 0.5; stroke-dasharray: 0.9 0.6; }
+#map .verdict-wanted.hit { stroke-dasharray: none; fill: var(--gold); fill-opacity: 0.25; }
+#map .verdict-scorned { stroke: var(--bad); stroke-width: 0.45; stroke-linecap: round; opacity: 0.7; }
+#map .verdict-scorned.stung { stroke-width: 0.8; opacity: 1; }
+#map .best-ghost { fill: var(--gold); fill-opacity: 0.05; stroke: var(--gold); stroke-width: 0.35; stroke-dasharray: 1.2 0.9; }
+#map .best-word { fill: var(--gold); font-size: 3px; font-family: system-ui, sans-serif; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 0.7px; }
 #map .person { fill: var(--you); opacity: 0.75; transition: transform 1.1s ease-in-out, opacity 1s; }
 #map .person.gone { opacity: 0; fill: var(--bad); }
 #map .crowd.away { opacity: 0; }
@@ -164,6 +182,9 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .float.wanted { fill: var(--gold); font-size: 4.4px; }
 #map .float.plain { fill: var(--good); }
 #map .float.bad { fill: var(--bad); }
+#map .float.total { font-size: 7px; }
+#map .float.total.pos { fill: var(--good); }
+#map .float.total.neg { fill: var(--bad); }
 #map .float.missed { fill: var(--gold); font-style: italic; font-weight: 600; }
 @keyframes rise { 0% { opacity: 0; transform: translateY(1.5px); } 12%, 75% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-3px); } }
 #map .trail { fill: none; stroke: var(--you); stroke-width: 0.6; stroke-opacity: 0.8; }
@@ -200,6 +221,8 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .key-fad { color: var(--fad); font-weight: 400; }
 .key-unknown { background: var(--muted); opacity: 0.5; width: 6px !important; height: 6px !important; margin: 0 4px; }
 .key-star { color: var(--gold); font-weight: 400; }
+.key-wanted { border: 1.5px solid var(--gold); background: rgba(242, 182, 74, 0.25); }
+.key-scorned { color: var(--bad); font-weight: 400; }
 
 dialog {
   max-width: 640px; width: calc(100% - 32px); max-height: calc(100vh - 32px); overflow: auto;

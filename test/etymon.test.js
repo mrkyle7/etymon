@@ -141,7 +141,7 @@ test('needed senses pay more, scorned ones cost, as do vagueness and emptiness',
   assert.ok(needed.needed && needed.amount > plain.amount);
 
   const start = E.newGame(0);
-  assert.deepStrictEqual(E.scornedNow(start), ['shy']);
+  assert.deepStrictEqual(E.scornedNow(start), ['shy', 'effeminate']);
   assert.ok(start.seen.includes('shy'), 'out of fashion senses are always visible');
   const scorned = E.preview(start, { x: at('shy').x, y: at('shy').y, r: 5 }).reasons.find((r) => r.sense === 'shy');
   assert.ok(scorned.scorned && scorned.amount === -E.SCORN && scorned.ifWanted === -E.SCORN);
@@ -235,4 +235,21 @@ test('each century wants what is nearer your word, so the clues follow your path
 test('nice starts out meaning both ignorant and foolish, as its story says', () => {
   const g = E.newGame(0);
   assert.deepStrictEqual(E.preview(g, { x: g.x, y: g.y, r: g.r }).senses.sort(), ['foolish', 'ignorant']);
+});
+
+test('the best move is one you could make, and no move you could make beats it', () => {
+  E.LEVELS.forEach((L, i) => {
+    const g = E.newGame(i);
+    const best = E.bestMove(g);
+    assert.deepStrictEqual(E.constrain(g, best.move), best.move, `${L.id}: a legal move`);
+    for (let dx = -E.REACH; dx <= E.REACH; dx += 5) {
+      for (let dy = -E.REACH; dy <= E.REACH; dy += 5) {
+        assert.ok(E.preview(g, { x: g.x + dx, y: g.y + dy, r: g.r }).delta <= best.delta, `${L.id}: ${dx},${dy}`);
+      }
+    }
+  });
+  assert.strictEqual(E.grade(29, 29), 'best');
+  assert.strictEqual(E.grade(24, 29), 'good');
+  assert.strictEqual(E.grade(14, 29), 'fair');
+  assert.strictEqual(E.grade(-7, 29), 'poor');
 });

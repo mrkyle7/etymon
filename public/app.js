@@ -55,6 +55,11 @@
   }
 
   const level = () => E.LEVELS[game.levelIndex];
+  // The real word's journey, to measure yours against as you go.
+  const reals = {};
+  const realGame = () => reals[game.levelIndex] || (reals[game.levelIndex] = E.historyGame(game.levelIndex));
+  const realSpeakers = (i) => (i ? realGame().log[i - 1].speakers : E.START_SPEAKERS);
+  const GRADE_TEXT = { best: 'The best move you had.', good: 'A good move', fair: 'A fair move', poor: 'A poor move' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
   function ordinalCentury(year) {
     const c = Math.floor(year / 100) + 1;
@@ -155,6 +160,31 @@
       if (game.goal && known && l.name === game.goal) g.append(svg('text', { class: 'target-star', x: l.x + 1.6, y: l.y - 1.4 }, '★'));
       above.push(g);
     }
+    // What the century just passed wanted and scorned, and the best move you
+    // had, stay on the map until the next one passes.
+    const last = !game.over && !replay && game.log[game.log.length - 1];
+    const word = game.over ? L.word : era[2];
+    const count = ` ${game.speakers}`;
+    const at = game.over ? game : p.move;
+    const [wx, wy] = wordSpot(word + count, at, shown);
+    if (last) {
+      for (const name of last.wanted) {
+        const l = E.senseAt(game, name);
+        below.push(svg('circle', { class: `verdict-wanted${last.senses.includes(name) ? ' hit' : ''}`, cx: l.x, cy: l.y, r: 2.6 }));
+      }
+      for (const name of last.scorned) {
+        const l = E.senseAt(game, name);
+        above.push(svg('path', { class: `verdict-scorned${last.senses.includes(name) ? ' stung' : ''}`,
+          d: `M${l.x - 1.8} ${l.y - 1.8}L${l.x + 1.8} ${l.y + 1.8}M${l.x + 1.8} ${l.y - 1.8}L${l.x - 1.8} ${l.y + 1.8}` }));
+      }
+      if (last.grade !== 'best') {
+        const b = last.bestAt;
+        below.push(svg('circle', { class: 'best-ghost', cx: b.x, cy: b.y, r: b.r }));
+        const text = `best ${signed(last.best)}`;
+        const [bx, by] = wordSpot(text, b, shown, 3, [textBox(wx, wy, word + count, 4)]);
+        below.push(svg('text', { class: 'best-word', x: bx, y: by, 'text-anchor': 'middle' }, text));
+      }
+    }
     if (replay) {
       const you = game.trail[Math.min(replay.step, game.trail.length - 1)];
       const them = real.trail[Math.min(replay.step, real.trail.length - 1)];
@@ -168,11 +198,10 @@
       if (!game.over && Math.hypot(p.move.x - game.x, p.move.y - game.y) > 0.5) {
         above.push(svg('line', { class: 'arrow', x1: game.x, y1: game.y, x2: p.move.x, y2: p.move.y, 'marker-end': 'url(#arrowhead)' }));
       }
-      const at = game.over ? game : p.move;
       above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
-      const word = game.over ? L.word : era[2];
-      const [wx, wy] = wordSpot(word, at, shown);
-      above.push(svg('text', { class: 'ghost-word', x: wx, y: wy, 'text-anchor': 'middle' }, word));
+      const label = svg('text', { class: 'ghost-word', x: wx, y: wy, 'text-anchor': 'middle' }, word);
+      label.append(svg('tspan', { class: `count ${game.speakers < realSpeakers(game.era) ? 'behind' : 'ahead'}` }, count));
+      above.push(label);
     }
     $('below').replaceChildren(...below);
     $('above').replaceChildren(...above);
@@ -189,16 +218,16 @@
 
   // Where to write your word's spelling by its circle: above it, or below,
   // left or right of it, wherever it doesn't cover a meaning's label.
-  function wordSpot(word, at, senses) {
-    const taken = senses.flatMap((l) => {
+  function wordSpot(word, at, senses, size = 4, also = []) {
+    const taken = also.concat(senses.flatMap((l) => {
       const anchor = l.x > 80 ? 'end' : l.x < 20 ? 'start' : 'middle';
       return [textBox(l.x, l.y + 4.6, game.seen.includes(l.name) || game.over ? l.name : '?', 3.8, anchor), [l.x - 1.2, l.y - 1.2, l.x + 1.2, l.y + 1.2]];
-    });
-    const w = word.length * 4 * 0.55;
+    }));
+    const w = word.length * size * 0.55;
     const spots = [
       [at.x, at.y - at.r - 1.2], [at.x, at.y + at.r + 4], [at.x - at.r - w / 2 - 1, at.y + 1.4], [at.x + at.r + w / 2 + 1, at.y + 1.4],
     ].filter(([x, y]) => y > -2 && y < 103 && x - w / 2 > -4 && x + w / 2 < 104);
-    return spots.find(([x, y]) => !taken.some((b) => overlaps(textBox(x, y, word, 4), b))) || spots[0] || [at.x, at.y];
+    return spots.find(([x, y]) => !taken.some((b) => overlaps(textBox(x, y, word, size), b))) || spots[0] || [at.x, at.y];
   }
 
   // Where the i-th speaker stands in a circle: a sunflower that fills from
@@ -250,20 +279,22 @@
 
   function renderTimeline() {
     const L = level();
-    const top = Math.max(200, ...game.log.map((l) => l.speakers));
+    const real = realGame();
+    const top = Math.max(200, ...game.log.map((l) => l.speakers), ...real.log.map((l) => l.speakers));
+    const tick = (i) => el('span', { class: 'par', style: `bottom:${(100 * realSpeakers(i)) / top}%` });
     $('timeline').replaceChildren(...L.eras.map((e, i) => {
       const entry = game.log[i];
       const last = i === L.eras.length - 1;
       if (entry) {
         const hit = entry.senses.some((s) => entry.wanted.includes(s));
-        return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers; really meant ${L.history[i]}` },
-          el('span', { class: 'bar-wrap' }, el('span', { class: `bar ${entry.delta >= 0 ? 'up' : 'down'}`, style: `height:${(100 * entry.speakers) / top}%` })),
+        return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers (the real ${L.word} had ${realSpeakers(i + 1)}); ${entry.grade} move; really meant ${L.history[i]}` },
+          el('span', { class: 'bar-wrap' }, el('span', { class: `bar ${entry.grade}`, style: `height:${(100 * entry.speakers) / top}%` }), tick(i + 1)),
           el('span', { class: `mark ${entry.faithful ? 'true' : 'astray'}` }, entry.faithful ? '✓' : '✗'),
           el('span', { class: 'yr' }, String(e[0])));
       }
       const now = i === game.era && !game.over;
       return el('li', { class: now ? 'now' : 'later' },
-        el('span', { class: 'bar-wrap' }, now ? el('span', { class: 'bar ghost-bar', style: `height:${(100 * game.speakers) / top}%` }) : ''),
+        el('span', { class: 'bar-wrap' }, now ? el('span', { class: 'bar ghost-bar', style: `height:${(100 * game.speakers) / top}%` }) : '', tick(i + 1)),
         el('span', { class: 'mark' }, now ? '•' : last ? '★' : ''),
         el('span', { class: 'yr' }, String(e[0])));
     }));
@@ -275,6 +306,9 @@
     $('year').textContent = game.over ? 'Today' : era[0];
     $('form').textContent = game.over ? L.word : era[2];
     $('speakers').textContent = game.speakers;
+    const par = game.over ? E.score(realGame()) - E.ARRIVAL_BONUS : realSpeakers(game.era);
+    $('par').textContent = `real ${L.word}: ${par}`;
+    $('par').className = `par-note ${game.speakers < par ? 'behind' : 'ahead'}`;
     const fads = game.over ? [] : E.fadNow(game);
     const mine = game.over ? (game.log[game.log.length - 1] || { senses: [] }).senses : meaningNow();
     $('now-chips').replaceChildren(...(mine.length
@@ -321,6 +355,7 @@
     const L = level();
     const before = E.eraOf(game)[0];
     const hadGoal = game.goal;
+    const best = E.bestMove(game);
     const p = E.advance(game, ghost);
     $('floats').replaceChildren();
     const entry = game.log[game.log.length - 1];
@@ -328,6 +363,9 @@
     const hit = p.senses.filter((s) => entry.wanted.includes(s));
     const stung = p.senses.filter((s) => entry.scorned.includes(s));
     const really = L.history[game.log.length - 1];
+    entry.best = Math.max(best.delta, p.delta);
+    entry.bestAt = best.move;
+    entry.grade = E.grade(p.delta, entry.best);
 
     // On the map: what each sense paid, and what you missed.
     const from = [];
@@ -342,6 +380,7 @@
     for (const w of entry.wanted) {
       if (!hit.includes(w)) { const l = at(w); float(l.x, l.y - 2.4, 'wanted', 'missed'); }
     }
+    float(game.x, game.y + 2, signed(p.delta), `total ${p.delta >= 0 ? 'pos' : 'neg'}`);
     p.reasons.filter((r) => !r.sense).forEach((r, i) => {
       const label = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' }[r.text] || 'too vague';
       float(game.x, game.y + game.r + 3.5 + i * 4.2, `${signed(r.amount)} ${label}`, 'bad');
@@ -360,6 +399,7 @@
       'it wanted ', ...words(entry.wanted, hit), '. ',
       ...(entry.scorned.length ? [el('span', { class: stung.length ? 'astray' : '' }, ...words(entry.scorned, stung), ' went out of fashion. ')] : []),
       el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers. `),
+      el('span', { class: `grade ${entry.grade}` }, entry.grade === 'best' ? `${GRADE_TEXT.best} ` : `${GRADE_TEXT[entry.grade]}: the best was ${signed(entry.best)}. `),
       el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
       ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
       ...(fresh.length ? [el('span', {}, ` A new meaning appears${fresh.some((l) => game.seen.includes(l.name)) ? `: ${fresh.filter((l) => game.seen.includes(l.name)).map((l) => l.name).join(', ')}` : ' somewhere'}.`)] : []),
