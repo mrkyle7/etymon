@@ -30,7 +30,16 @@ test('every word is well formed: its senses, centuries and history', () => {
       assert.ok(l.x >= 0 && l.x <= 100 && l.y >= 0 && l.y <= 100, `${L.id}: ${l.name} on the map`);
       assert.ok(l.quote, `${L.id}: ${l.name} has a quote`);
     }
-    assert.strictEqual(L.route.length, L.eras.length, `${L.id}: a route step per century`);
+    assert.ok(L.endings[L.target], `${L.id}: the real ending is an ending`);
+    assert.ok(Object.keys(L.endings).length >= 3, `${L.id}: several endings`);
+    for (const name of Object.keys(L.endings)) {
+      assert.ok(names.has(name), `${L.id}: ending ${name} is a sense`);
+      assert.ok(L.endings[name].text, `${L.id}: ending ${name} has its story`);
+    }
+    for (const [name, [x, y, quote, after]] of Object.entries(L.fads)) {
+      assert.ok(!names.has(name), `${L.id}: fad ${name} isn't already a sense`);
+      assert.ok(names.has(after) && quote && x >= 0 && x <= 100 && y >= 0 && y <= 100, `${L.id}: fad ${name}`);
+    }
   }
 });
 
@@ -42,18 +51,56 @@ test('history itself survives and arrives, every word', () => {
   });
 });
 
-test('the perfect route is moves a player could make, holding what the word really meant', () => {
+test('every ending has a perfect route, of moves a player could make', () => {
   E.LEVELS.forEach((L, i) => {
-    const g = E.newGame(i);
-    L.route.forEach(([x, y, r], c) => {
-      const at = `${L.id} ${L.eras[c][0]}`;
-      assert.ok(Math.hypot(x - g.x, y - g.y) <= E.REACH, `${at}: within reach`);
-      assert.ok([g.r, g.r + E.BROADEN, g.r - E.NARROW].includes(r), `${at}: same, broadened or narrowed`);
-      assert.deepStrictEqual(E.constrain(g, { x, y, r }), { x, y, r }, `${at}: unclamped`);
-      const p = E.advance(g, { x, y, r });
-      assert.ok(p.senses.includes(L.history[c]), `${at}: holds ${L.history[c]}`);
-    });
+    for (const ending of Object.keys(L.endings)) {
+      const route = E.ROUTES[L.id][ending];
+      assert.strictEqual(route.length, L.eras.length, `${L.id} ${ending}: a move per century (run scripts/routes.js)`);
+      const g = E.newGame(i);
+      route.forEach(([x, y, r], c) => {
+        const at = `${L.id} ${ending} ${L.eras[c][0]}`;
+        assert.ok(Math.hypot(x - g.x, y - g.y) <= E.REACH, `${at}: within reach`);
+        assert.ok([g.r, g.r + E.BROADEN, g.r - E.NARROW].includes(r), `${at}: same, broadened or narrowed`);
+        assert.deepStrictEqual(E.constrain(g, { x, y, r }), { x, y, r }, `${at}: unclamped`);
+        const p = E.advance(g, { x, y, r });
+        if (ending === L.target) assert.ok(p.senses.includes(L.history[c]), `${at}: holds ${L.history[c]}`);
+      });
+      assert.strictEqual(g.goal, ending, `${L.id} ${ending}: leads there`);
+      assert.strictEqual(g.outcome, 'arrived', `${L.id} ${ending}: arrives`);
+    }
   });
+});
+
+test('the ending depends on how closely the journey followed history', () => {
+  const L = E.LEVELS[0];
+  const reveal = L.eras.length - E.REVEAL;
+  const true_ = E.newGame(0);
+  for (let i = 0; i < reveal; i++) {
+    assert.strictEqual(true_.goal, null, 'unknown until the last centuries');
+    E.advance(true_, { x: true_.x, y: true_.y, r: true_.r });
+  }
+  // Staying put on "ignorant" never means what nice really meant.
+  assert.strictEqual(E.faithful(true_), 0);
+  assert.notStrictEqual(true_.goal, L.target);
+  assert.strictEqual(true_.goal, 'foolish', 'the other ending nearest you');
+  const real = E.perfectGame(0);
+  assert.strictEqual(E.faithful(real), L.eras.length);
+  assert.strictEqual(real.goal, L.target);
+});
+
+test('fads sprout beside what you carried, pay once, then go out of fashion', () => {
+  const g = E.newGame(0);
+  E.advance(g, { x: 32, y: 12, r: 10 }); // wanton
+  assert.deepStrictEqual(g.log[0].sprouted, ['lecherous']);
+  assert.deepStrictEqual(E.fadNow(g), ['lecherous']);
+  assert.ok(g.seen.includes('lecherous'));
+  const [x, y] = E.LEVELS[0].fads.lecherous;
+  const fad = E.preview(g, { x, y, r: 5 }).reasons.find((r) => r.sense === 'lecherous');
+  assert.ok(fad.fad && fad.amount === E.FAD);
+  E.advance(g, { x, y, r: g.r });
+  E.advance(g, { x, y, r: g.r });
+  assert.ok(E.scornedNow(g).includes('lecherous'), 'out of fashion two centuries on');
+  assert.strictEqual(E.preview(g, { x, y, r: 5 }).reasons.find((r) => r.sense === 'lecherous').amount, -E.SCORN);
 });
 
 test('moves are limited to the reach, the map, and the breadth change', () => {
@@ -113,12 +160,15 @@ test('a word nobody says becomes obsolete', () => {
 });
 
 test('narrowing words must be narrow to arrive', () => {
-  const i = E.LEVELS.findIndex((L) => L.targetMaxBreadth);
+  const i = E.LEVELS.findIndex((L) => L.id === 'girl');
   const L = E.LEVELS[i];
+  const max = L.endings[L.target].maxBreadth;
   const t = E.landmarks(L).find((l) => l.name === L.target);
   const g = E.newGame(i);
-  assert.ok(!E.reachedTarget(g, { x: t.x, y: t.y, r: L.targetMaxBreadth + 1 }));
-  assert.ok(E.reachedTarget(g, { x: t.x, y: t.y, r: L.targetMaxBreadth }));
+  assert.ok(!E.reachedTarget(g, { x: t.x, y: t.y, r: max }), 'not before the ending is known');
+  g.goal = L.target;
+  assert.ok(!E.reachedTarget(g, { x: t.x, y: t.y, r: max + 1 }));
+  assert.ok(E.reachedTarget(g, { x: t.x, y: t.y, r: max }));
 });
 
 test('drifting with purpose beats staying put', () => {
@@ -126,6 +176,7 @@ test('drifting with purpose beats staying put', () => {
     const stay = E.newGame(i);
     while (!stay.over) E.advance(stay, { x: stay.x, y: stay.y, r: stay.r });
     assert.notStrictEqual(stay.outcome, 'arrived', L.id);
+    assert.ok(E.score(E.perfectGame(i, stay.goal)) > E.score(stay), `${L.id}: even its own ending`);
     assert.ok(E.score(E.historyGame(i)) > E.score(stay), L.id);
   });
 });
@@ -147,7 +198,7 @@ test('senses appear in their century, and far ones stay unseen until you get nea
   assert.ok(!E.landmarks(L, 1300).some((l) => l.name === 'sarcastic'));
   assert.ok(E.landmarks(L, 1900).some((l) => l.name === 'sarcastic'));
   const g = E.newGame(0);
-  assert.ok(g.seen.includes(L.target), 'you always know where you are going');
+  assert.ok(!g.seen.includes(L.target), 'where you are going is hidden too');
   assert.ok(g.seen.includes('foolish'), 'near senses are seen');
   assert.ok(!g.seen.includes('kind'), 'far senses are not');
   // The history route ends up seeing where it went.

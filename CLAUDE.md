@@ -4,12 +4,22 @@ A game on **cheetahmoongames.com**, served at **https://etymon.cheetahmoongames.
 
 ## The game
 
-You are a word drifting through a thousand years of meaning: *nice* (once "foolish"), *silly* ("blessed"), *awful* ("awe-inspiring"), *girl* ("child") and *meat* ("food"). The map is meaning; landmarks are senses and your circle is the senses you carry. Each century you drift (up to `REACH`) and may broaden a lot (`BROADEN`) or narrow a little (`NARROW`), then speakers change: each sense you carry wins some (far more if the century wants it), and each sense the century scorns (`eras[i][4]`, shown in red ✕) costs some. What a century wants is hidden: the player gets an oblique clue (`eras[i][3]`) and learns the answer only once it's passed. Senses beyond `SIGHT` are an unnamed "?" until you drift near, and some senses only appear in a later century (a landmark's 4th element). Otherwise: too many senses is vague, none is meaningless, and some speakers forget you every century. At 0 you're obsolete. Carry today's meaning in the last century for +100. The score to beat is the perfect route (`route`): the best legal moves (position and breadth each century) that hold what the word really meant (`history`). It was found by searching every move, and the tests check it stays legal, so search again if you change the rules or a word. The page draws your speakers as a crowd of dots in your circle, with a bar per century above the map.
+You are a word drifting through a thousand years of meaning: *nice* (once "foolish"), *silly* ("blessed"), *awful* ("awe-inspiring"), *girl* ("child") and *meat* ("food"). The map is meaning; landmarks are senses and your circle is the senses you carry. Each century you drift (up to `REACH`) and may broaden a lot (`BROADEN`) or narrow a little (`NARROW`), then speakers change:
+- each sense you carry wins some, far more if the century wants it. What it wants is hidden: the player gets an oblique clue (`eras[i][3]`) and learns the answer once it's passed.
+- each sense out of fashion (`eras[i][4]`, a red ✕) costs some.
+- **fads** (`fads`) sprout beside senses you've carried, so the map changes with your route. A fad pays `FAD` the century it appears, and goes out of fashion `FAD_LIFE` centuries later.
+- too many senses is vague, none is meaningless, and some speakers forget you every century. At 0 you're obsolete.
 
-- `public/game.js` is all of the rules and the five words' data, with no DOM, shared by the page and `test/etymon.test.js`.
-- `public/app.js` and `public/style.css` are its page (an SVG map you tap to drift).
+Senses beyond `SIGHT` are an unnamed "?" until you drift near, and some only appear in a later century (a landmark's 4th element).
 
-It runs entirely in the browser: the server only serves files, `/healthz` and `/api/me`, so nothing is stored and any number of instances is fine. Best scores are kept in `localStorage`.
+**Endings.** What the word means today depends on the journey. After each century the player learns what the word really meant then (`history`). With `REVEAL` centuries left, `chooseEnding` fixes the goal: the real meaning (`target`) if the player matched history in at least `ON_COURSE` centuries, or else the other ending (`endings`) nearest where they are. Until then "Becoming" is "?", and the goal's place on the map stays fogged until you get near. Carry it in the last century for +100 (an ending can need a narrow circle, `maxBreadth`). The page keeps which endings each player has found in `localStorage`.
+
+**Perfect routes.** The score to beat is the perfect route to the ending you got: the best moves (position and breadth each century) found by `scripts/routes.js`, which writes `public/routes.js`. The route to the real ending also means what the word really meant every century, and the end screen's replay plays yours against it. Run `node scripts/routes.js` (a couple of minutes) after changing the rules or a word; the tests check every ending has a legal route that arrives.
+
+- `public/game.js` is all of the rules and the five words' data, with no DOM, shared by the page and `test/etymon.test.js`. It loads `public/routes.js`.
+- `public/app.js` and `public/style.css` are its page: an SVG map you tap to drift, your speakers as a crowd of dots, a bar per century, what you mean now and your journey so far, and the end screen comparing your journey with the real one. On wide screens the map sits beside everything else so a century fits on one screen.
+
+It runs entirely in the browser: the server only serves files, `/healthz` and `/api/me`, so nothing is stored and any number of instances is fine. Best scores and endings found are kept in `localStorage`.
 
 ## Read this first
 
@@ -48,6 +58,7 @@ Check what's done before starting. Ask the user if unsure, and update these boxe
 
 ```sh
 npm test            # unit tests
+node scripts/routes.js   # find the perfect route to every ending, after changing the rules or a word
 npm start           # http://localhost:8080
 docker build -t etymon . && docker run -p 8080:8080 etymon   # the container Cloud Run runs
 ```
