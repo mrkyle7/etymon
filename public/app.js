@@ -71,8 +71,8 @@
     stopReplay();
     game = E.newGame(levelIndex);
     ghost = { x: game.x, y: game.y, r: game.r };
-    $('result').hidden = false;
-    $('result').replaceChildren(el('em', {}, level().blurb));
+    $('result').hidden = true;
+    $('blurb').textContent = level().blurb;
     $('crowd').replaceChildren();
     $('floats').replaceChildren();
     people = [];
