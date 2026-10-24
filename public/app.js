@@ -585,6 +585,11 @@
   $('end-again').addEventListener('click', () => { $('end').close(); start(game.levelIndex); });
   $('end-map').addEventListener('click', () => $('end').close());
 
+  // On phones the drift card is pinned to the bottom: leave room for it.
+  if (window.ResizeObserver) {
+    new ResizeObserver(([e]) => $('game').style.setProperty('--drift', `${Math.ceil(e.target.offsetHeight)}px`)).observe($('drift'));
+  }
+
   renderWords();
   let seen = false;
   try { seen = localStorage.getItem('etymon-seen-rules') === '2'; localStorage.setItem('etymon-seen-rules', '2'); } catch { /* fine */ }
