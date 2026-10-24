@@ -50,7 +50,8 @@
   // each century's [x, y, breadth], a move a player could make, found by
   // searching every legal move. Each century is
   // [year, the senses it wants, the word's spelling then, a clue to what it
-  // wants, the senses out of fashion]. `fads` are [x, y, quote, the sense
+  // wants, the senses out of fashion, and what it wants instead if you're
+  // nearer that: [the senses, its clue]]. `fads` are [x, y, quote, the sense
   // that makes them sprout], appearing the century after you carry it.
   // `endings` are what the word can mean today: `target`, the real one, and
   // others it ends up with if the journey strays from history (`history`,
@@ -59,7 +60,7 @@
   const LEVELS = [
     {
       id: 'nice', word: 'nice', origin: 'Latin nescius, "not knowing"',
-      start: 'ignorant', breadth: 10, target: 'pleasant',
+      start: 'ignorant', startAt: [18, 28], breadth: 10, target: 'pleasant',
       blurb: 'Borrowed from Old French in about 1300, it meant "foolish" or "ignorant".',
       landmarks: {
         ignorant: [12, 22, 'he was nyce and knew no letters'],
@@ -94,14 +95,22 @@
         posh: [62, 74, 'a nice neighbourhood', 'agreeable'],
       },
       eras: [
-        [1300, ['foolish', 'wanton'], 'nyce', 'Minstrels mock the gullible and the lusty.', ['ignorant']],
-        [1400, ['wanton', 'shy'], 'nyce', 'Courtly love: gallants flirt, ladies blush.', ['foolish']],
-        [1500, ['shy', 'fussy'], 'nyse', 'Manners multiply, and everyone frets over them.', ['coy']],
-        [1600, ['subtle', 'precise'], 'nice', 'Scholars and lawyers split hairs.', ['shy']],
-        [1700, ['precise', 'dainty'], 'nice', 'Science measures; fashion frills.', ['fussy']],
-        [1800, ['agreeable', 'tasty'], 'nice', 'Drawing rooms, tea, and polite company.', ['dainty']],
-        [1900, ['sarcastic', 'pleasant'], 'nice', 'Postcards from the seaside, and a new irony.', ['agreeable']],
-        [2000, ['pleasant', 'kind'], 'nice', 'Everything is lovely, thanks for asking.', ['sarcastic']],
+        [1300, ['foolish', 'wanton'], 'nyce', 'Minstrels mock the gullible and the lusty.', ['shy'],
+          [['strange', 'coy'], 'Travellers\' tales of marvels, and maidens who won\'t look up.']],
+        [1400, ['wanton', 'shy'], 'nyce', 'Courtly love: gallants flirt, ladies blush.', ['foolish'],
+          [['strange', 'delicate'], 'Herbalists tend odd and tender plants.']],
+        [1500, ['shy', 'fussy'], 'nyse', 'Manners multiply, and everyone frets over them.', ['coy'],
+          [['lavish', 'delicate'], 'Tudor feasts: silks for the rich, care for the frail.']],
+        [1600, ['subtle', 'precise'], 'nice', 'Scholars and lawyers split hairs.', ['shy'],
+          [['foolish', 'strange'], 'Fools\' festivals and travelling freak shows.']],
+        [1700, ['precise', 'dainty'], 'nice', 'Science measures; fashion frills.', ['fussy'],
+          [['delicate', 'lavish'], 'Porcelain from China, and what it costs.']],
+        [1800, ['agreeable', 'tasty'], 'nice', 'Drawing rooms, tea, and polite company.', ['dainty'],
+          [['precise', 'fussy'], 'Clerks and governesses keep everything just so.']],
+        [1900, ['sarcastic', 'pleasant'], 'nice', 'Postcards from the seaside, and a new irony.', ['agreeable'],
+          [['delicate', 'tasty'], 'Tea rooms: fine china and fancy cakes.']],
+        [2000, ['pleasant', 'kind'], 'nice', 'Everything is lovely, thanks for asking.', ['sarcastic'],
+          [['foolish', 'strange'], 'Videos of people doing daft and peculiar things.']],
       ],
       history: ['foolish', 'wanton', 'shy', 'fussy', 'precise', 'agreeable', 'pleasant', 'pleasant'],
     },
@@ -142,14 +151,22 @@
         clumsy: [80, 62, 'a silly, clumsy lad', 'simple'],
       },
       eras: [
-        [1000, ['holy', 'happy'], 'sǣlig', 'Monks copy psalms and feast on saints\' days.', ['harmless']],
-        [1100, ['innocent', 'saintly'], 'seely', 'Sermons on lambs and martyrs.', ['happy']],
-        [1200, ['innocent', 'harmless'], 'seely', 'Friars preach meekness to the poor.', ['holy']],
-        [1300, ['pitiable', 'cheerful'], 'sely', 'Plague years: pity, and dancing anyway.', ['saintly']],
-        [1400, ['pitiable', 'feeble'], 'sely', 'Old soldiers beg at the gates.', ['innocent']],
-        [1500, ['gullible', 'rustic'], 'silly', 'Pastoral poems, and swindlers at the fair.', ['weak']],
-        [1600, ['simple', 'stunned'], 'silly', 'Stage clowns: plain folk, and pratfalls.', ['pitiable']],
-        [1700, ['foolish', 'trivial'], 'silly', 'Wits in the coffee houses mock everything.', ['rustic']],
+        [1000, ['holy', 'happy'], 'sǣlig', 'Monks copy psalms and feast on saints\' days.', ['harmless'],
+          [['lucky', 'cheerful'], 'Harvest home: luck and laughter in the fields.']],
+        [1100, ['innocent', 'saintly'], 'seely', 'Sermons on lambs and martyrs.', ['happy'],
+          [['rustic', 'lucky'], 'Fortune-tellers at the market-town fairs.']],
+        [1200, ['innocent', 'harmless'], 'seely', 'Friars preach meekness to the poor.', ['holy'],
+          [['cheerful', 'rustic'], 'Village dances on the green.']],
+        [1300, ['pitiable', 'cheerful'], 'sely', 'Plague years: pity, and dancing anyway.', ['saintly'],
+          [['holy', 'blessed'], 'Pilgrims crowd the shrines.']],
+        [1400, ['pitiable', 'feeble'], 'sely', 'Old soldiers beg at the gates.', ['innocent'],
+          [['happy', 'lucky'], 'Peasants rise up, and some get away with it.']],
+        [1500, ['gullible', 'rustic'], 'silly', 'Pastoral poems, and swindlers at the fair.', ['weak'],
+          [['holy', 'saintly'], 'Reformers argue over the saints.']],
+        [1600, ['simple', 'stunned'], 'silly', 'Stage clowns: plain folk, and pratfalls.', ['pitiable'],
+          [['weak', 'feeble'], 'Old castles crumble; old soldiers totter.']],
+        [1700, ['foolish', 'trivial'], 'silly', 'Wits in the coffee houses mock everything.', ['rustic'],
+          [['weak', 'harmless'], 'Flimsy fashions: paper fans and silk slippers.']],
       ],
       history: ['blessed', 'innocent', 'innocent', 'harmless', 'pitiable', 'feeble', 'simple', 'foolish'],
     },
@@ -190,14 +207,22 @@
         excessive: [66, 82, 'awful prices', 'great'],
       },
       eras: [
-        [1200, ['reverent', 'pious'], 'aȝefull', 'Cathedrals rise; the faithful kneel.', ['sublime']],
-        [1300, ['solemn', 'sinful'], 'aweful', 'Doom paintings over every chancel arch.', ['majestic']],
-        [1400, ['solemn', 'terrifying'], 'aweful', 'Requiems, and storms at sea.', ['pious']],
-        [1500, ['gruesome', 'sublime'], 'awfull', 'Executions in the square; mountains in the poems.', ['solemn']],
-        [1600, ['dreadful', 'sublime'], 'awful', 'Tragedies on the stage, and grim news from the wars.', ['wonderful']],
-        [1700, ['dreadful', 'enormous'], 'awful', 'Everything is bigger: cities, debts, wigs.', ['terrifying']],
-        [1800, ['ugly', 'very'], 'awful', 'Novels of fashion: frightful bonnets, frightfully dull.', ['great']],
-        [1900, ['very bad', 'tiresome'], 'awful', 'Slang everywhere; complaints about everything.', ['dreadful']],
+        [1200, ['reverent', 'pious'], 'aȝefull', 'Cathedrals rise; the faithful kneel.', ['sublime'],
+          [['majestic', 'wonderful'], 'Kings crowned in splendour.']],
+        [1300, ['solemn', 'sinful'], 'aweful', 'Doom paintings over every chancel arch.', ['majestic'],
+          [['wonderful', 'great'], 'Marvels brought back from the East.']],
+        [1400, ['solemn', 'terrifying'], 'aweful', 'Requiems, and storms at sea.', ['pious'],
+          [['majestic', 'sublime'], 'Mountain passes and royal progresses.']],
+        [1500, ['gruesome', 'sublime'], 'awfull', 'Executions in the square; mountains in the poems.', ['solemn'],
+          [['majestic', 'great'], 'Princes build palaces to outdo each other.']],
+        [1600, ['dreadful', 'sublime'], 'awful', 'Tragedies on the stage, and grim news from the wars.', ['wonderful'],
+          [['solemn', 'majestic'], 'State funerals for great men.']],
+        [1700, ['dreadful', 'enormous'], 'awful', 'Everything is bigger: cities, debts, wigs.', ['terrifying'],
+          [['wonderful', 'great'], 'Explorers\' maps of wonders and vast lands.']],
+        [1800, ['ugly', 'very'], 'awful', 'Novels of fashion: frightful bonnets, frightfully dull.', ['great'],
+          [['enormous', 'wonderful'], 'Railways and factories, bigger every year.']],
+        [1900, ['very bad', 'tiresome'], 'awful', 'Slang everywhere; complaints about everything.', ['dreadful'],
+          [['solemn', 'enormous'], 'War memorials, vast and silent.']],
       ],
       history: ['reverent', 'solemn', 'terrifying', 'terrifying', 'dreadful', 'dreadful', 'ugly', 'very bad'],
     },
@@ -236,14 +261,22 @@
         'chorus girl': [92, 68, 'a girl from the music hall', 'sweetheart'],
       },
       eras: [
-        [1300, ['child', 'young person'], 'gyrle', 'Village feast days: children everywhere.', ['rogue']],
-        [1400, ['beggar', 'boy'], 'girle', 'Famine roads, and boys sent out to work.', ['servant']],
-        [1500, ['young person', 'pupil'], 'gerle', 'Grammar schools open their doors.', ['beggar']],
-        [1600, ['servant', 'young woman'], 'girle', 'Great houses fill with staff.', ['peasant']],
-        [1700, ['flirt', 'daughter'], 'girl', 'Masquerades, and marriages arranged.', ['boy']],
-        [1800, ['shopgirl', 'sweetheart'], 'girl', 'Department stores and love letters.', ['servant']],
-        [1900, ['young woman', 'friends'], 'girl', 'Dance halls and nights out.', ['flirt']],
-        [2000, ['young woman', 'daughter'], 'girl', 'Birthday cards and graduations.', ['servant']],
+        [1300, ['child', 'young person'], 'gyrle', 'Village feast days: children everywhere.', ['rogue'],
+          [['peasant', 'pupil'], 'Village priests teach the farmers\' children their letters.']],
+        [1400, ['beggar', 'boy'], 'girle', 'Famine roads, and boys sent out to work.', ['servant'],
+          [['infant', 'pupil'], 'Nursemaids and their charges.']],
+        [1500, ['young person', 'pupil'], 'gerle', 'Grammar schools open their doors.', ['beggar'],
+          [['servant', 'boy'], 'Pages and serving lads in the great hall.']],
+        [1600, ['servant', 'young woman'], 'girle', 'Great houses fill with staff.', ['peasant'],
+          [['pupil', 'child'], 'Charity schools for poor children.']],
+        [1700, ['flirt', 'daughter'], 'girl', 'Masquerades, and marriages arranged.', ['boy'],
+          [['servant', 'child'], 'Foundling hospitals and their little workers.']],
+        [1800, ['shopgirl', 'sweetheart'], 'girl', 'Department stores and love letters.', ['servant'],
+          [['pupil', 'infant'], 'Nurseries and schoolrooms in every house.']],
+        [1900, ['young woman', 'friends'], 'girl', 'Dance halls and nights out.', ['flirt'],
+          [['child', 'pupil'], 'School for every child, by law.']],
+        [2000, ['young woman', 'daughter'], 'girl', 'Birthday cards and graduations.', ['servant'],
+          [['child', 'infant'], 'A baby boom: prams in every street.']],
       ],
       history: ['child', 'young person', 'young person', 'young woman', 'young woman', 'young woman', 'young woman', 'young woman'],
     },
@@ -283,14 +316,22 @@
         carcass: [96, 48, 'the meat hung in the larder', 'flesh'],
       },
       eras: [
-        [1000, ['food', 'provisions'], 'mete', 'A hard winter; stores run low.', ['kernel']],
-        [1100, ['feast', 'food'], 'mete', 'Norman lords and their banquets.', ['fodder']],
-        [1200, ['meal', 'nourishment'], 'mete', 'Monasteries ring the bell for supper.', ['feast']],
-        [1300, ['fish', 'pulp'], 'mete', 'Fast days, and orchards in the cloister.', ['bread']],
-        [1400, ['venison', 'body'], 'mete', 'Royal hunts, and preachers on the weakness of the body.', ['substance']],
-        [1500, ['flesh', 'body'], 'meate', 'Butchers organise into guilds.', ['fish']],
-        [1600, ['flesh', 'kernel'], 'meat', 'Roast beef of old England, and nuts from the colonies.', ['venison']],
-        [1700, ['flesh', 'gist'], 'meat', 'Pamphleteers argue the heart of every matter.', ['food']],
+        [1000, ['food', 'provisions'], 'mete', 'A hard winter; stores run low.', ['kernel'],
+          [['bread', 'dish'], 'The bakehouse and the cooking pot.']],
+        [1100, ['feast', 'food'], 'mete', 'Norman lords and their banquets.', ['fodder'],
+          [['kernel', 'provisions'], 'Nut harvests stored for winter.']],
+        [1200, ['meal', 'nourishment'], 'mete', 'Monasteries ring the bell for supper.', ['feast'],
+          [['bread', 'substance'], 'Theologians debate the substance of the bread.']],
+        [1300, ['fish', 'pulp'], 'mete', 'Fast days, and orchards in the cloister.', ['bread'],
+          [['food', 'meal'], 'Market days in the growing towns.']],
+        [1400, ['venison', 'body'], 'mete', 'Royal hunts, and preachers on the weakness of the body.', ['substance'],
+          [['kernel', 'pulp'], 'Orchards and nut groves of the monasteries.']],
+        [1500, ['flesh', 'body'], 'meate', 'Butchers organise into guilds.', ['fish'],
+          [['food', 'dish'], 'Cookery books in print.']],
+        [1600, ['flesh', 'kernel'], 'meat', 'Roast beef of old England, and nuts from the colonies.', ['venison'],
+          [['substance', 'bread'], 'Puritans preach plain bread and plain truth.']],
+        [1700, ['flesh', 'gist'], 'meat', 'Pamphleteers argue the heart of every matter.', ['food'],
+          [['substance', 'kernel'], 'Get to the heart of it: nutshells and pamphlets.']],
       ],
       history: ['food', 'food', 'meal', 'fish', 'fish', 'flesh', 'flesh', 'flesh'],
     },
@@ -322,12 +363,14 @@
 
   function newGame(levelIndex = 0) {
     const level = LEVELS[levelIndex];
-    const start = landmark(level, level.start);
+    const [x, y] = level.startAt || [landmark(level, level.start).x, landmark(level, level.start).y];
+    const start = { x, y };
     const g = {
       levelIndex, era: 0, x: start.x, y: start.y, r: level.breadth, speakers: START_SPEAKERS,
       trail: [{ x: start.x, y: start.y, r: level.breadth }], log: [], over: false, outcome: null,
       seen: [], fads: {}, goal: null,
     };
+    g.want = choose(g);
     look(g);
     return g;
   }
@@ -345,6 +388,20 @@
 
   const levelOf = (g) => LEVELS[g.levelIndex];
   const eraOf = (g) => levelOf(g).eras[Math.min(g.era, levelOf(g).eras.length - 1)];
+  // What this century wants, and its clue. Each century wants one of two
+  // pairs of senses: the one nearer where your word is, so the clues follow
+  // your path.
+  function choose(g) {
+    const level = levelOf(g);
+    const era = eraOf(g);
+    const options = [{ senses: era[1], clue: era[3] }];
+    if (era[5]) options.push({ senses: era[5][0], clue: era[5][1] });
+    const far = (o) => o.senses.reduce((n, name) => n + dist(landmark(level, name), g), 0);
+    return options.reduce((a, b) => (far(b) < far(a) ? b : a));
+  }
+  const wantedNow = (g) => g.want.senses;
+  const clueNow = (g) => g.want.clue;
+
   // Out of fashion this century: the century's own, and fads that have had their day.
   const scornedNow = (g) => [...(eraOf(g)[4] || []),
     ...Object.entries(g.fads).filter(([, at]) => g.era === at + FAD_LIFE).map(([name]) => name)];
@@ -383,7 +440,7 @@
   function preview(g, move) {
     const m = constrain(g, move);
     const level = levelOf(g);
-    const needed = eraOf(g)[1];
+    const needed = wantedNow(g);
     const scorned = scornedNow(g);
     const fads = fadNow(g);
     const held = senses(g).filter((l) => dist(l, m) <= m.r);
@@ -433,7 +490,7 @@
     g.trail.push({ ...p.move });
     const year = eraOf(g)[0];
     g.log.push({
-      year, form: eraOf(g)[2], senses: p.senses, wanted: eraOf(g)[1], scorned: scornedNow(g),
+      year, form: eraOf(g)[2], senses: p.senses, wanted: wantedNow(g), clue: clueNow(g), scorned: scornedNow(g),
       delta: p.delta, speakers: g.speakers, at: { ...p.move },
     });
 
@@ -448,6 +505,7 @@
     g.log[g.log.length - 1].sprouted = sprouted;
     g.log[g.log.length - 1].faithful = p.senses.includes(level.history[g.era - 1]);
     if (g.era === level.eras.length - REVEAL) g.goal = chooseEnding(g);
+    if (g.era < level.eras.length) g.want = choose(g);
     if (g.era < level.eras.length) look(g);
     if (g.speakers <= 0) {
       g.over = true;
@@ -476,7 +534,7 @@
   return {
     LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, FAD, FAD_LIFE, REVEAL,
     ARRIVAL_BONUS, START_SPEAKERS, ON_COURSE, ROUTES,
-    landmarks, senses, senseAt, newGame, eraOf, scornedNow, fadNow, goalKnown, constrain, preview, advance,
+    landmarks, senses, senseAt, newGame, eraOf, wantedNow, clueNow, scornedNow, fadNow, goalKnown, constrain, preview, advance,
     reachedTarget, score, historyGame, perfectGame, faithful, chooseEnding,
   };
 });
