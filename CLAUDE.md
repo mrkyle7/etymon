@@ -11,7 +11,7 @@ You are a word drifting through a thousand years of meaning: *nice* (once "fooli
 
 Senses beyond `SIGHT` are "?" until you get near; some appear only in a later century (a landmark's 4th element).
 
-**Endings.** With `REVEAL` centuries left, `chooseEnding` fixes the goal: the real meaning (`target`) if you kept history's event in at least `ON_COURSE` centuries, or else the world you spent longest in. Your world is then fixed to the goal's. Carry it in the last century for +100 (some need a narrow circle, `maxBreadth`). `history` is what the word really meant, shown afterwards. Endings found are kept in `localStorage`.
+**Endings.** With `REVEAL` centuries left, `chooseEnding` fixes the goal: the real meaning (`target`) if you kept history's event in at least `ON_COURSE` centuries, or else the world you're in (if back in history, the last other one). Your world is then fixed to the goal's. Carry it in the last century for +100 (some need a narrow circle, `maxBreadth`). `history` is what the word really meant, shown afterwards. Endings found are kept in `localStorage`.
 
 **Perfect routes.** The score to beat is the best route to your ending (moves and events), found by `scripts/routes.js`, which writes `public/routes.js`. It stays hidden until the player asks or matches it. Run `node scripts/routes.js` (several minutes) after changing the rules or a word; the tests check every ending has a legal route that arrives.
 

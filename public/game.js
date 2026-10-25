@@ -564,13 +564,12 @@
   const faithful = (g) => g.log.filter((l) => l.kept).length;
 
   // What your journey makes of the word today: the real meaning if you've
-  // mostly kept to history, or else the world you've spent longest in (the
-  // later, if two tie).
+  // mostly kept to history, or else the world you're in (or, if you've come
+  // back to history, the last other world you were in).
   function chooseEnding(g) {
     const level = levelOf(g);
     if (faithful(g) >= ON_COURSE) return level.target;
-    const others = g.log.map((l) => l.world).filter((w) => w !== level.target);
-    return others.reduce((best, w) => (others.filter((o) => o === w).length >= others.filter((o) => o === best).length ? w : best));
+    return g.log.map((l) => l.world).filter((w) => w !== level.target).pop();
   }
 
   // Where a move may go: within REACH of where you are, on the map, and
