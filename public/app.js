@@ -65,11 +65,6 @@
   const answerGame = () => E.perfectGame(game.levelIndex, game.goal || level().target);
   const GRADE_TEXT = { best: 'The best move you had.', good: 'A good move', fair: 'A fair move', poor: 'A poor move' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
-  function ordinalCentury(year) {
-    const c = Math.floor(year / 100) + 1;
-    const s = c % 100 >= 11 && c % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[c % 10] || 'th');
-    return `${c}${s} century`;
-  }
   const words = (names, bold = []) => names.flatMap((w, i) => [i ? (i === names.length - 1 ? ' and ' : ', ') : '',
     el(bold.includes(w) ? 'strong' : 'span', {}, w)]);
   // What you mean where you stand now.
@@ -210,6 +205,7 @@
         above.push(svg('line', { class: 'arrow', x1: game.x, y1: game.y, x2: p.move.x, y2: p.move.y, 'marker-end': 'url(#arrowhead)' }));
       }
       above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
+      if (!game.over) above.push(...breadthButtons(at));
       const label = svg('text', { class: 'ghost-word', x: wx, y: wy, 'text-anchor': 'middle' }, word);
       label.append(svg('tspan', { class: `count ${game.speakers < realSpeakers(game.era) ? 'behind' : 'ahead'}` }, count));
       above.push(label);
@@ -217,6 +213,21 @@
     $('below').replaceChildren(...below);
     $('above').replaceChildren(...above);
     return p;
+  }
+
+  // Broaden (+) and narrow (−) sit on the edge of your circle, on whichever
+  // side has room. Pressed shows the change you've chosen; tap again to undo.
+  function breadthButtons(at) {
+    const side = at.x > 70 ? -1 : 1;
+    return [['broaden', '+', -0.6, ghost.r > game.r, game.r >= E.MAX_BREADTH],
+      ['narrow', '−', 0.6, ghost.r < game.r, game.r <= E.MIN_BREADTH]].map(([act, sign, a, pressed, off]) => {
+      const x = Math.min(101, Math.max(-1, at.x + side * Math.cos(a) * at.r));
+      const y = Math.min(101, Math.max(-1, at.y + Math.sin(a) * at.r));
+      const g = svg('g', { class: `breadth-btn${pressed ? ' pressed' : ''}${off ? ' off' : ''}`, 'data-act': act, role: 'button',
+        'aria-label': act === 'broaden' ? 'Broaden a lot: hold more meanings' : 'Narrow a little: hold fewer meanings' });
+      g.append(svg('circle', { cx: x, cy: y, r: 3.4 }), svg('text', { x, y: y + 1.6, 'text-anchor': 'middle' }, sign));
+      return g;
+    });
   }
 
   // Roughly where a label's text sits on the map: [left, top, right, bottom].
@@ -356,7 +367,7 @@
     $('next').hidden = game.over;
     $('drift').hidden = game.over;
     $('over').hidden = !game.over;
-    $('next-label').textContent = `The ${ordinalCentury(era[0])}'s tastes`;
+    $('next-label').replaceChildren('Tastes in the ', el('span', { class: 'decade' }, `${era[0]}s`));
     $('clue').textContent = E.clueNow(game);
     $('scorn-clue').textContent = E.scornClueNow(game);
     const goal = game.goal;
@@ -371,10 +382,6 @@
     const p = renderMap();
     if (!replay) ghost = p.move;
     renderTimeline();
-    $('narrow').setAttribute('aria-pressed', String(ghost.r < game.r));
-    $('broaden').setAttribute('aria-pressed', String(ghost.r > game.r));
-    $('narrow').disabled = game.over || game.r <= E.MIN_BREADTH;
-    $('broaden').disabled = game.over || game.r >= E.MAX_BREADTH;
 
     // What you'd mean after the drift: kept, new and dropped. What it does to
     // your speakers only shows once the century has passed.
@@ -384,7 +391,8 @@
         mine.includes(s) ? s : `+ ${s}`)),
       ...(p.senses.length ? [] : [el('span', { class: 'chip bad' }, 'nothing at all')]),
       ...mine.filter((s) => !p.senses.includes(s)).map((s) => el('span', { class: 'chip dropped' }, s)));
-    $('pass').textContent = `Let the ${ordinalCentury(era[0])} pass`;
+    const next = L.eras[game.era + 1];
+    $('pass').textContent = `Continue to ${next ? next[0] : 'today'}`;
   }
 
   function pass() {
@@ -537,6 +545,8 @@
   let dragging = false;
   $('map').addEventListener('pointerdown', (evt) => {
     if (game.over) return;
+    const btn = evt.target.closest('.breadth-btn');
+    if (btn) return btn.classList.contains('off') ? null : (btn.dataset.act === 'broaden' ? broaden() : narrow());
     dragging = true;
     $('map').setPointerCapture(evt.pointerId);
     ghost = target(evt);
@@ -552,14 +562,14 @@
   $('map').addEventListener('pointercancel', stop);
 
   // Each century you may narrow a little or broaden a lot: tap again to undo.
-  $('narrow').addEventListener('click', () => {
+  function narrow() {
     ghost = E.constrain(game, { ...ghost, r: ghost.r < game.r ? game.r : game.r - E.NARROW });
     render();
-  });
-  $('broaden').addEventListener('click', () => {
+  }
+  function broaden() {
     ghost = E.constrain(game, { ...ghost, r: ghost.r > game.r ? game.r : game.r + E.BROADEN });
     render();
-  });
+  }
   $('pass').addEventListener('click', pass);
   document.addEventListener('keydown', (e) => {
     if (document.querySelector('dialog[open]') || $('game').hidden || game.over) return;
@@ -568,8 +578,8 @@
       e.preventDefault();
       ghost = E.constrain(game, { x: ghost.x + step[0], y: ghost.y + step[1], r: ghost.r });
       render();
-    } else if (e.key === '-' || e.key === '[') $('narrow').click();
-    else if (e.key === '+' || e.key === '=' || e.key === ']') $('broaden').click();
+    } else if (e.key === '-' || e.key === '[') narrow();
+    else if (e.key === '+' || e.key === '=' || e.key === ']') broaden();
     else if (e.key === 'Enter' && e.target === document.body) pass();
   });
 
