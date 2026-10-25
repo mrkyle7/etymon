@@ -10,7 +10,7 @@
 //     speakers
 //   - fads sprout next to senses you've carried: they pay well the century
 //     they appear, then go out of fashion two centuries later
-//   - carry more than MAX_SENSES and you're too vague to be useful
+//   - carry more than MAX_SENSES and you're too vague: what you win is diluted
 //   - carry none and nobody knows what you mean
 //   - every century some speakers forget you anyway
 // Reach 0 speakers and you're obsolete. What you mean today is hidden until
@@ -38,7 +38,6 @@
   const FAD_LIFE = 2; // centuries until a fad is out of fashion
   const REVEAL = 3; // centuries left when you learn what you're becoming
   const ON_COURSE = 3; // centuries matching history by then, for the real ending
-  const VAGUE = 15; // per sense over MAX_SENSES
   const MEANINGLESS = 20;
   const FORGETTING = 10;
   const ARRIVAL_BONUS = 100;
@@ -481,15 +480,19 @@
         ifPlain: GAIN.plain, ifWanted: GAIN.needed, text: s.name,
       });
     }
+    // Too many meanings and you're vague: everything you'd win is diluted, to
+    // MAX_SENSES out of every sense you carry. Its cost shows on its own.
     if (held.length > MAX_SENSES) {
-      reasons.push({ amount: -VAGUE * (held.length - MAX_SENSES), text: `too vague: ${held.length} meanings` });
+      const won = (key) => reasons.reduce((n, r) => n + Math.max(0, r[key]), 0);
+      const diluted = (key) => Math.round((won(key) * MAX_SENSES) / held.length) - won(key);
+      reasons.push({ vague: true, amount: diluted('amount'), ifPlain: diluted('ifPlain'), ifWanted: diluted('ifWanted'), text: `too vague: ${held.length} meanings` });
     }
     if (!held.length) reasons.push({ amount: -MEANINGLESS, text: 'nobody knows what you mean' });
     reasons.push({ amount: -FORGETTING, text: 'forgotten by some' });
     const delta = reasons.reduce((n, r) => n + r.amount, 0);
-    // The range the player sees: no sense wanted, to every sense wanted.
-    const sure = reasons.reduce((n, r) => n + (r.sense ? r.ifPlain : r.amount), 0);
-    const best = reasons.reduce((n, r) => n + (r.sense ? r.ifWanted : r.amount), 0);
+    // The range the player could know: no sense wanted, to every sense wanted.
+    const sure = reasons.reduce((n, r) => n + (r.ifPlain === undefined ? r.amount : r.ifPlain), 0);
+    const best = reasons.reduce((n, r) => n + (r.ifWanted === undefined ? r.amount : r.ifWanted), 0);
     return { move: m, senses: held.map((s) => s.name), reasons, delta, range: [sure, best] };
   }
 

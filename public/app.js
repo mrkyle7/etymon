@@ -332,10 +332,11 @@
 
   // The speakers you're sure to lose if the century passed now, by your
   // circle's size: those who forget you anyway, and what being too vague or
-  // meaning nothing costs. They show hollow, from the edge of the crowd in.
+  // meaning nothing is sure to cost. They show hollow, from the edge of the crowd in.
   function markRisk() {
     const p = !game.over && !replay && E.preview(game, ghost);
-    const sure = p ? -p.reasons.filter((r) => !r.sense).reduce((n, r) => n + r.amount, 0) : 0;
+    // Vagueness counts only what it's sure to cost, as if nothing were wanted.
+    const sure = p ? -p.reasons.filter((r) => !r.sense).reduce((n, r) => n + (r.vague ? r.ifPlain : r.amount), 0) : 0;
     const n = Math.round(sure / PER_PERSON);
     const settled = people.length - newcomers;
     people.forEach((dot, i) => {
