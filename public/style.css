@@ -143,7 +143,21 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 /* Next: the century's clue. */
 .label .decade { text-transform: none; }
 .clue { margin: 4px 0 8px; font-family: Georgia, serif; font-style: italic; font-size: 19px; line-height: 1.3; color: var(--ink); }
-.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.next-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+/* The events to choose between: the chosen one in full, the other in a line. */
+.events { display: grid; gap: 6px; margin: 6px 0 0; }
+.event {
+  display: grid; gap: 2px; text-align: left; padding: 6px 10px; border-radius: 10px; font: inherit;
+  background: none; border: 1px dashed var(--line); color: var(--muted);
+}
+.event .ev-tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.event.history .ev-tag { color: var(--gold); }
+.event:not(.history) .ev-tag { color: var(--fad); }
+.event .clue { margin: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event.chosen { border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); }
+.event.chosen .clue { font-size: 19px; white-space: normal; }
+.event .scorn-clue { margin: 0; }
 .scorn-clue { margin: -4px 0 8px; font-family: Georgia, serif; font-style: italic; font-size: 15px; line-height: 1.3; color: var(--bad); }
 .scorn-clue::before { content: '✕ '; font-style: normal; }
 .tag { font-size: 13px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); }
@@ -237,6 +251,8 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
   .result { position: fixed; top: 50%; bottom: auto; transform: translate(-50%, -50%); width: min(92vw, 380px); max-height: 80dvh; z-index: 6; }
   .result.at-top { top: 50%; }
   .clue { font-size: 17px; margin: 2px 0 4px; }
+  .event.chosen .clue { font-size: 17px; }
+  .event .clue { font-size: 14px; }
   .scorn-clue { font-size: 14px; margin: 0 0 6px; }
 }
 

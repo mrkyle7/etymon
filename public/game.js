@@ -4,10 +4,11 @@
 // have, and your circle is the senses you carry. Each century you drift
 // (up to REACH across the map) and may broaden a lot or narrow a little, then
 // the century passes and your speakers change:
+//   - each century you choose what happens: your world's event, or one that
+//     changes history. The event sets the century's tastes.
 //   - each sense you carry wins speakers, a lot more if the century needs
 //     words for it (you only learn which afterwards)
-//   - each sense out of fashion this century (you can see these) loses you
-//     speakers
+//   - each sense out of fashion this century loses you speakers
 //   - fads sprout next to senses you've carried: they pay well the century
 //     they appear, then go out of fashion two centuries later
 //   - carry more than MAX_SENSES and you're too vague: what you win is diluted
@@ -37,26 +38,22 @@
   const FAD = 12; // a fad, the century it sprouts
   const FAD_LIFE = 2; // centuries until a fad is out of fashion
   const REVEAL = 3; // centuries left when you learn what you're becoming
-  const ON_COURSE = 3; // centuries matching history by then, for the real ending
+  const ON_COURSE = 3; // history's events kept by then, for the real ending
   const MEANINGLESS = 20;
   const FORGETTING = 10;
   const ARRIVAL_BONUS = 100;
   const SIGHT = 24; // how far from your word you can make out other senses
 
   // Landmarks are [x, y, a quote using the word in that sense, and the year
-  // the sense appears, if not from the start]. `history` is the sense the
-  // word really had each century, and `route` is the best way to play it:
-  // each century's [x, y, breadth], a move a player could make, found by
-  // searching every legal move. Each century is
-  // [year, the senses it wants, the word's spelling then, a clue to what it
-  // wants, the senses out of fashion, and what it wants instead if you're
-  // nearer that: [the senses, its clue], and a clue to what's out of
-  // fashion]. `fads` are [x, y, quote, the sense that makes them sprout],
-  // appearing the century after you carry it.
-  // `endings` are what the word can mean today: `target`, the real one, and
-  // others it ends up with if the journey strays from history (`history`,
-  // what it really meant each century). Perfect routes to each are in
-  // routes.js, made by scripts/routes.js.
+  // the sense appears, if not from the start]. `eras` are [year, the word's
+  // spelling then]. `worlds` are the histories the word can live through, one
+  // for each ending: `target`'s is the real one. Each has an event a century,
+  // [its clue, the senses it wants, the senses out of fashion, a clue to
+  // those], and each century you choose your world's event or one that
+  // changes history. `history` is what the word really meant each century.
+  // `fads` are [x, y, quote, the sense that makes them sprout], appearing the
+  // century after you carry it. `endings` are what the word can mean today.
+  // Perfect routes to each are in routes.js, made by scripts/routes.js.
   const LEVELS = [
     {
       id: 'nice', word: 'nice', origin: 'Latin nescius, "not knowing"',
@@ -98,24 +95,49 @@
         prim: [70, 42, 'nice and prim', 'dainty'],
         posh: [62, 74, 'a nice neighbourhood', 'agreeable'],
       },
-      eras: [
-        [1300, ['foolish', 'wanton'], 'nyce', 'Minstrels mock the gullible and the lusty.', ['shy', 'effeminate'],
-          [['strange', 'coy'], 'Travellers\' tales of marvels, and maidens who won\'t look up.'], 'Bold knights have no patience for the bashful, or the soft.'],
-        [1400, ['wanton', 'shy'], 'nyce', 'Courtly love: gallants flirt, ladies blush.', ['foolish', 'trivial'],
-          [['strange', 'delicate'], 'Herbalists tend odd and tender plants.'], 'The court has no time for fools, or idle chatter.'],
-        [1500, ['shy', 'fussy'], 'nyse', 'Manners multiply, and everyone frets over them.', ['coy', 'ignorant'],
-          [['lavish', 'delicate'], 'Tudor feasts: silks for the rich, care for the frail.'], 'Plain dealing and the new learning: no more playing hard to get, and no more dunces.'],
-        [1600, ['subtle', 'precise'], 'nice', 'Scholars and lawyers split hairs.', ['shy', 'lavish'],
-          [['foolish', 'strange'], 'Fools\' festivals and travelling freak shows.'], 'Wits and Puritans: the tongue-tied are left behind, and finery frowned on.'],
-        [1700, ['precise', 'dainty'], 'nice', 'Science measures; fashion frills.', ['fussy', 'effeminate'],
-          [['delicate', 'lavish'], 'Porcelain from China, and what it costs.'], 'Enlightened gentlemen sneer at fuss, and at fops.'],
-        [1800, ['agreeable', 'tasty'], 'nice', 'Drawing rooms, tea, and polite company.', ['dainty', 'wanton'],
-          [['precise', 'fussy'], 'Clerks and governesses keep everything just so.'], 'Rugged Romantics laugh at frills; Victorians blush at anything racy.'],
-        [1900, ['sarcastic', 'pleasant'], 'nice', 'Postcards from the seaside, and a new irony.', ['agreeable', 'respectable'],
-          [['delicate', 'tasty'], 'Tea rooms: fine china and fancy cakes.'], 'Mere politeness is the dullest thing going, and respectability a bore.'],
-        [2000, ['pleasant', 'kind'], 'nice', 'Everything is lovely, thanks for asking.', ['sarcastic', 'precise'],
-          [['foolish', 'strange'], 'Videos of people doing daft and peculiar things.'], 'Earnest is in, irony is so last century, and nobody splits hairs.'],
-      ],
+      eras: [[1300, 'nyce'], [1400, 'nyce'], [1500, 'nyse'], [1600, 'nice'], [1700, 'nice'], [1800, 'nice'], [1900, 'nice'], [2000, 'nice']],
+      worlds: {
+        pleasant: [
+          ['Minstrels mock the gullible and the lusty.', ['foolish', 'wanton'], ['shy', 'effeminate'], 'Bold knights have no patience for the bashful, or the soft.'],
+          ['Courtly love: gallants flirt, ladies blush.', ['wanton', 'shy'], ['foolish', 'trivial'], 'The court has no time for fools, or idle chatter.'],
+          ['Manners multiply, and everyone frets over them.', ['shy', 'fussy'], ['coy', 'ignorant'], 'Plain dealing and the new learning: no more playing hard to get, and no more dunces.'],
+          ['Scholars and lawyers split hairs.', ['subtle', 'precise'], ['shy', 'lavish'], 'Wits and Puritans: the tongue-tied are left behind, and finery frowned on.'],
+          ['Science measures; fashion frills.', ['precise', 'dainty'], ['fussy', 'effeminate'], 'Enlightened gentlemen sneer at fuss, and at fops.'],
+          ['Drawing rooms, tea, and polite company.', ['agreeable', 'tasty'], ['dainty', 'wanton'], 'Rugged Romantics laugh at frills; Victorians blush at anything racy.'],
+          ['Postcards from the seaside, and a new irony.', ['sarcastic', 'pleasant'], ['agreeable', 'respectable'], 'Mere politeness is the dullest thing going, and respectability a bore.'],
+          ['Everything is lovely, thanks for asking.', ['pleasant', 'kind'], ['sarcastic', 'precise'], 'Earnest is in, irony is so last century, and nobody splits hairs.'],
+        ],
+        foolish: [
+          ['Jesters at every feast, and nobody reads.', ['foolish', 'ignorant'], ['shy', 'delicate'], 'Nobody has time for the timid or the tender.'],
+          ['Fools\' feasts and travelling wonders.', ['foolish', 'strange'], ['precise', 'dainty'], 'Nobody minds their manners or their measures.'],
+          ['Idle tales and pranks at court.', ['trivial', 'foolish'], ['subtle', 'fussy'], 'Fine distinctions bore everyone.'],
+          ['Comedies of clowns and teasing lovers.', ['foolish', 'coy'], ['precise', 'delicate'], 'No one splits hairs, or handles anything gently.'],
+          ['Gin lanes and gossip sheets.', ['ignorant', 'trivial'], ['refined', 'precise'], 'Polish and precision are for prigs.'],
+          ['Music halls and freak shows.', ['foolish', 'strange'], ['respectable', 'agreeable'], 'Respectability is a bore.'],
+          ['Slapstick on the silent screen.', ['foolish', 'sarcastic'], ['kind', 'pleasant'], 'Sweetness is for suckers.'],
+          ['Daft videos, endlessly shared.', ['foolish', 'trivial'], ['precise', 'refined'], 'Nobody cares about getting it right.'],
+        ],
+        precise: [
+          ['Clerks copy every word exactly.', ['precise', 'fussy'], ['wanton', 'coy'], 'The clerks frown on flirting.'],
+          ['Monks argue over every letter.', ['fussy', 'precise'], ['lavish', 'wanton'], 'Extravagance and lust are sins.'],
+          ['Lawyers split hairs.', ['subtle', 'precise'], ['foolish', 'trivial'], 'No patience for fools, or idle talk.'],
+          ['Scholars quarrel in Latin.', ['subtle', 'fussy'], ['lavish', 'coy'], 'Puritans frown on finery and flirting.'],
+          ['The Royal Society measures everything.', ['precise', 'refined'], ['ignorant', 'strange'], 'Superstition is out.'],
+          ['Clerks and governesses keep everything just so.', ['precise', 'fussy'], ['tasty', 'wanton'], 'Appetites are vulgar.'],
+          ['Engineers and examiners.', ['precise', 'subtle'], ['sarcastic', 'trivial'], 'Irony and trifles are frowned on.'],
+          ['Data, and the fine print.', ['precise', 'subtle'], ['pleasant', 'kind'], 'Mere niceness counts for nothing.'],
+        ],
+        delicate: [
+          ['Herbalists tend tender seedlings.', ['delicate', 'shy'], ['wanton', 'ignorant'], 'Brutes and lechers are shunned.'],
+          ['Odd and tender plants from the East.', ['delicate', 'strange'], ['foolish', 'trivial'], 'Fools and chatter are out.'],
+          ['Silks for the rich, care for the frail.', ['delicate', 'lavish'], ['ignorant', 'coy'], 'No dunces, and no games.'],
+          ['Lace and fine glass.', ['delicate', 'dainty'], ['foolish', 'strange'], 'Fools\' festivals and freak shows are banned.'],
+          ['Porcelain from China.', ['delicate', 'refined'], ['ignorant', 'wanton'], 'Coarse manners are out.'],
+          ['Pressed flowers and fainting heroines.', ['delicate', 'dainty'], ['tasty', 'fussy'], 'Hearty food and fuss are common.'],
+          ['Tea rooms: fine china and fancy cakes.', ['delicate', 'tasty'], ['sarcastic', 'agreeable'], 'Irony and small talk are vulgar.'],
+          ['Handle with care, and be gentle.', ['delicate', 'kind'], ['sarcastic', 'trivial'], 'Snark and fluff are out.'],
+        ],
+      },
       history: ['foolish', 'wanton', 'shy', 'fussy', 'precise', 'agreeable', 'pleasant', 'pleasant'],
     },
     {
@@ -158,24 +180,49 @@
         sickly: [84, 30, 'a silly, sickly child', 'feeble'],
         clumsy: [80, 62, 'a silly, clumsy lad', 'simple'],
       },
-      eras: [
-        [1000, ['holy', 'happy'], 'sǣlig', 'Monks copy psalms and feast on saints\' days.', ['harmless', 'helpless'],
-          [['lucky', 'cheerful'], 'Harvest home: luck and laughter in the fields.'], 'Raiders on the coast: the meek and the helpless go under.'],
-        [1100, ['innocent', 'saintly'], 'seely', 'Sermons on lambs and martyrs.', ['happy', 'cheerful'],
-          [['rustic', 'lucky'], 'Fortune-tellers at the market-town fairs.'], 'Penance and fasting: mirth and merrymaking are frowned on.'],
-        [1200, ['innocent', 'harmless'], 'seely', 'Friars preach meekness to the poor.', ['holy', 'lucky'],
-          [['cheerful', 'rustic'], 'Village dances on the green.'], 'Fat, worldly priests give holiness a bad name, and fortune-telling is a sin.'],
-        [1300, ['pitiable', 'cheerful'], 'sely', 'Plague years: pity, and dancing anyway.', ['saintly', 'humble'],
-          [['holy', 'blessed'], 'Pilgrims crowd the shrines.'], 'The saints didn\'t stop the plague, and the poor who survive want more.'],
-        [1400, ['pitiable', 'feeble'], 'sely', 'Old soldiers beg at the gates.', ['innocent', 'holy'],
-          [['happy', 'lucky'], 'Peasants rise up, and some get away with it.'], 'Hard times: nobody believes in innocence, or in miracles.'],
-        [1500, ['gullible', 'rustic'], 'silly', 'Pastoral poems, and swindlers at the fair.', ['weak', 'blessed'],
-          [['holy', 'saintly'], 'Reformers argue over the saints.'], 'A warrior king despises weakness, and reformers the old blessings.'],
-        [1600, ['simple', 'stunned'], 'silly', 'Stage clowns: plain folk, and pratfalls.', ['pitiable', 'helpless'],
-          [['weak', 'feeble'], 'Old castles crumble; old soldiers totter.'], 'Pity is out of fashion: the beggars and the helpless are whipped.'],
-        [1700, ['foolish', 'trivial'], 'silly', 'Wits in the coffee houses mock everything.', ['rustic', 'humble'],
-          [['weak', 'harmless'], 'Flimsy fashions: paper fans and silk slippers.'], 'Town wits sneer at country bumpkins and at humble pie.'],
-      ],
+      eras: [[1000, 'sǣlig'], [1100, 'seely'], [1200, 'seely'], [1300, 'sely'], [1400, 'sely'], [1500, 'silly'], [1600, 'silly'], [1700, 'silly']],
+      worlds: {
+        foolish: [
+          ['Monks copy psalms and feast on saints\' days.', ['holy', 'happy'], ['harmless', 'helpless'], 'Raiders on the coast: the meek and the helpless go under.'],
+          ['Sermons on lambs and martyrs.', ['innocent', 'saintly'], ['happy', 'cheerful'], 'Penance and fasting: mirth and merrymaking are frowned on.'],
+          ['Friars preach meekness to the poor.', ['innocent', 'harmless'], ['holy', 'lucky'], 'Fat, worldly priests give holiness a bad name, and fortune-telling is a sin.'],
+          ['Plague years: pity, and dancing anyway.', ['pitiable', 'cheerful'], ['saintly', 'humble'], 'The saints didn\'t stop the plague, and the poor who survive want more.'],
+          ['Old soldiers beg at the gates.', ['pitiable', 'feeble'], ['innocent', 'holy'], 'Hard times: nobody believes in innocence, or in miracles.'],
+          ['Pastoral poems, and swindlers at the fair.', ['gullible', 'rustic'], ['weak', 'blessed'], 'A warrior king despises weakness, and reformers the old blessings.'],
+          ['Stage clowns: plain folk, and pratfalls.', ['simple', 'stunned'], ['pitiable', 'helpless'], 'Pity is out of fashion: the beggars and the helpless are whipped.'],
+          ['Wits in the coffee houses mock everything.', ['foolish', 'trivial'], ['rustic', 'humble'], 'Town wits sneer at country bumpkins and at humble pie.'],
+        ],
+        holy: [
+          ['Monks copy psalms by candlelight.', ['holy', 'saintly'], ['lucky', 'cheerful'], 'Feasting and fortune are frowned on.'],
+          ['Crusaders take the cross.', ['blessed', 'holy'], ['rustic', 'happy'], 'Peasant merriment is sinful.'],
+          ['Cathedrals rise to the saints.', ['saintly', 'innocent'], ['lucky', 'cheerful'], 'Luck is pagan, and laughter idle.'],
+          ['Pilgrims crowd the shrines.', ['holy', 'blessed'], ['pitiable', 'rustic'], 'The poor are told to bear it.'],
+          ['Mystics and hermits.', ['holy', 'humble'], ['happy', 'lucky'], 'Pleasure is a snare.'],
+          ['The old faith holds.', ['holy', 'saintly'], ['gullible', 'giddy'], 'Dupes and drunkards are scorned.'],
+          ['Psalms in every parlour.', ['holy', 'blessed'], ['stunned', 'trivial'], 'Slapstick and trifles are sinful.'],
+          ['Revivals in the fields.', ['holy', 'innocent'], ['foolish', 'trivial'], 'The wits are godless.'],
+        ],
+        weak: [
+          ['Raiders burn the villages.', ['harmless', 'helpless'], ['holy', 'saintly'], 'The saints didn\'t save us.'],
+          ['Old walls crumble.', ['harmless', 'feeble'], ['lucky', 'cheerful'], 'Nobody feels lucky, or merry.'],
+          ['Famine years.', ['helpless', 'pitiable'], ['holy', 'happy'], 'God and joy seem far away.'],
+          ['Plague years: the weak and the dying.', ['feeble', 'pitiable'], ['cheerful', 'saintly'], 'No dancing, and no miracles.'],
+          ['Castles fall to cannon.', ['weak', 'feeble'], ['innocent', 'holy'], 'Nobody is innocent, nothing sacred.'],
+          ['Flimsy houses of the poor.', ['weak', 'helpless'], ['blessed', 'rustic'], 'The country is no blessing.'],
+          ['Old castles crumble; old soldiers totter.', ['weak', 'feeble'], ['simple', 'trivial'], 'No time for simpletons or trifles.'],
+          ['Paper fans and silk slippers.', ['weak', 'trivial'], ['foolish', 'simple'], 'Fools and bumpkins are out.'],
+        ],
+        rustic: [
+          ['Harvest home in the fields.', ['happy', 'lucky'], ['holy', 'harmless'], 'Priests and milksops are mocked.'],
+          ['Market-town fairs.', ['rustic', 'cheerful'], ['saintly', 'pitiable'], 'No saints, and no beggars.'],
+          ['Village dances on the green.', ['rustic', 'humble'], ['holy', 'weak'], 'The church is far off, and the weak stay home.'],
+          ['Ploughmen in the ballads.', ['rustic', 'simple'], ['saintly', 'feeble'], 'Saints and weaklings are out of the songs.'],
+          ['Peasants rise up, and win.', ['rustic', 'cheerful'], ['innocent', 'pitiable'], 'Nobody wants pity now.'],
+          ['Pastoral poems.', ['rustic', 'simple'], ['weak', 'holy'], 'Neither the frail nor the pious are sung.'],
+          ['Country fairs and morris dancing.', ['rustic', 'humble'], ['stunned', 'trivial'], 'Pratfalls and trifles are for town.'],
+          ['Farmers\' almanacs.', ['rustic', 'simple'], ['foolish', 'giddy'], 'Fools and drunks are town folk.'],
+        ],
+      },
       history: ['blessed', 'innocent', 'innocent', 'harmless', 'pitiable', 'feeble', 'simple', 'foolish'],
     },
     {
@@ -218,24 +265,49 @@
         shocking: [68, 50, 'awful manners', 'dreadful'],
         excessive: [66, 82, 'awful prices', 'great'],
       },
-      eras: [
-        [1200, ['reverent', 'pious'], 'aȝefull', 'Cathedrals rise; the faithful kneel.', ['sublime', 'great'],
-          [['majestic', 'wonderful'], 'Kings crowned in splendour.'], 'Wild crags are the devil\'s country, and boasting is a sin.'],
-        [1300, ['solemn', 'sinful'], 'aweful', 'Doom paintings over every chancel arch.', ['majestic', 'mighty'],
-          [['wonderful', 'great'], 'Marvels brought back from the East.'], 'Barons humble the king and his strongmen.'],
-        [1400, ['solemn', 'terrifying'], 'aweful', 'Requiems, and storms at sea.', ['pious', 'sinful'],
-          [['majestic', 'sublime'], 'Mountain passes and royal progresses.'], 'Lollards jeer at outward piety, and at the priests\' talk of sin.'],
-        [1500, ['gruesome', 'sublime'], 'awfull', 'Executions in the square; mountains in the poems.', ['solemn', 'reverent'],
-          [['majestic', 'great'], 'Princes build palaces to outdo each other.'], 'Reformers strip the altars of ceremony, and get up off their knees.'],
-        [1600, ['dreadful', 'sublime'], 'awful', 'Tragedies on the stage, and grim news from the wars.', ['wonderful', 'monstrous'],
-          [['solemn', 'majestic'], 'State funerals for great men.'], 'Sceptics scoff at marvels and monsters.'],
-        [1700, ['dreadful', 'enormous'], 'awful', 'Everything is bigger: cities, debts, wigs.', ['terrifying', 'fearful'],
-          [['wonderful', 'great'], 'Explorers\' maps of wonders and vast lands.'], 'Reason tames the old terrors, and nobody admits to being afraid.'],
-        [1800, ['ugly', 'very'], 'awful', 'Novels of fashion: frightful bonnets, frightfully dull.', ['great', 'pious'],
-          [['enormous', 'wonderful'], 'Railways and factories, bigger every year.'], 'Grandeur looks vulgar now, and piety is for Sundays.'],
-        [1900, ['very bad', 'tiresome'], 'awful', 'Slang everywhere; complaints about everything.', ['dreadful', 'majestic'],
-          [['solemn', 'enormous'], 'War memorials, vast and silent.'], 'Penny dreadfuls are for children, and empires are going out of style.'],
-      ],
+      eras: [[1200, 'aȝefull'], [1300, 'aweful'], [1400, 'aweful'], [1500, 'awfull'], [1600, 'awful'], [1700, 'awful'], [1800, 'awful'], [1900, 'awful']],
+      worlds: {
+        'very bad': [
+          ['Cathedrals rise; the faithful kneel.', ['reverent', 'pious'], ['sublime', 'great'], 'Wild crags are the devil\'s country, and boasting is a sin.'],
+          ['Doom paintings over every chancel arch.', ['solemn', 'sinful'], ['majestic', 'mighty'], 'Barons humble the king and his strongmen.'],
+          ['Requiems, and storms at sea.', ['solemn', 'terrifying'], ['pious', 'sinful'], 'Lollards jeer at outward piety, and at the priests\' talk of sin.'],
+          ['Executions in the square; mountains in the poems.', ['gruesome', 'sublime'], ['solemn', 'reverent'], 'Reformers strip the altars of ceremony, and get up off their knees.'],
+          ['Tragedies on the stage, and grim news from the wars.', ['dreadful', 'sublime'], ['wonderful', 'monstrous'], 'Sceptics scoff at marvels and monsters.'],
+          ['Everything is bigger: cities, debts, wigs.', ['dreadful', 'enormous'], ['terrifying', 'fearful'], 'Reason tames the old terrors, and nobody admits to being afraid.'],
+          ['Novels of fashion: frightful bonnets, frightfully dull.', ['ugly', 'very'], ['great', 'pious'], 'Grandeur looks vulgar now, and piety is for Sundays.'],
+          ['Slang everywhere; complaints about everything.', ['very bad', 'tiresome'], ['dreadful', 'majestic'], 'Penny dreadfuls are for children, and empires are going out of style.'],
+        ],
+        wonderful: [
+          ['Kings crowned in splendour.', ['majestic', 'wonderful'], ['sinful', 'terrifying'], 'Nobody wants sin or fear.'],
+          ['Marvels brought back from the East.', ['wonderful', 'great'], ['sinful', 'pious'], 'The preachers are ignored.'],
+          ['Royal progresses through the mountains.', ['majestic', 'sublime'], ['terrifying', 'solemn'], 'No dread, and no long faces.'],
+          ['Explorers\' tales of new worlds.', ['wonderful', 'sublime'], ['gruesome', 'dreadful'], 'Horrors are out of fashion.'],
+          ['Masques and fireworks.', ['wonderful', 'mighty'], ['dreadful', 'fearful'], 'Gloom and fright are banished.'],
+          ['Wonders of science.', ['wonderful', 'great'], ['terrifying', 'monstrous'], 'Reason tames the monsters.'],
+          ['Great exhibitions.', ['wonderful', 'tremendous'], ['ugly', 'dreadful'], 'Nobody admits to anything grim.'],
+          ['Jazz and moving pictures.', ['wonderful', 'very'], ['very bad', 'tiresome'], 'Moaning is out.'],
+        ],
+        solemn: [
+          ['Cathedrals rise; the faithful kneel.', ['reverent', 'solemn'], ['great', 'wonderful'], 'Boasting and marvels are vanity.'],
+          ['Requiem bells.', ['solemn', 'pious'], ['majestic', 'great'], 'Kings and their pomp are humbled.'],
+          ['Chantries for the dead.', ['solemn', 'reverent'], ['wonderful', 'sublime'], 'Marvels and mountains distract from prayer.'],
+          ['Old rites kept in secret.', ['solemn', 'pious'], ['gruesome', 'monstrous'], 'Horrors are for the street.'],
+          ['State funerals for great men.', ['solemn', 'majestic'], ['wonderful', 'mighty'], 'No fireworks, no swagger.'],
+          ['Sermons and silence.', ['solemn', 'reverent'], ['enormous', 'great'], 'Size is vulgar.'],
+          ['Gothic revival churches.', ['solemn', 'sublime'], ['very', 'ugly'], 'Slang and ugliness are frowned on.'],
+          ['War memorials, vast and silent.', ['solemn', 'reverent'], ['very bad', 'tiresome'], 'Complaining is disrespectful.'],
+        ],
+        enormous: [
+          ['Castles of unheard-of size.', ['great', 'mighty'], ['pious', 'reverent'], 'Nobody kneels any more.'],
+          ['Armies of thousands.', ['great', 'majestic'], ['solemn', 'sinful'], 'No time for long faces or sin.'],
+          ['Cannon and great ships.', ['mighty', 'great'], ['pious', 'reverent'], 'Prayer gives way to powder.'],
+          ['Galleons and sea monsters.', ['great', 'monstrous'], ['solemn', 'pious'], 'Sailors scoff at sermons.'],
+          ['Princes build palaces to outdo each other.', ['great', 'mighty'], ['reverent', 'solemn'], 'Humility is out.'],
+          ['Everything is bigger: cities, debts, wigs.', ['enormous', 'great'], ['dreadful', 'terrifying'], 'Fear is for small minds.'],
+          ['Railways and factories, bigger every year.', ['enormous', 'tremendous'], ['solemn', 'ugly'], 'Progress is neither grave nor ugly.'],
+          ['Skyscrapers and ocean liners.', ['enormous', 'very'], ['very bad', 'solemn'], 'Pessimists are behind the times.'],
+        ],
+      },
       history: ['reverent', 'solemn', 'terrifying', 'terrifying', 'dreadful', 'dreadful', 'ugly', 'very bad'],
     },
     {
@@ -276,24 +348,49 @@
         bride: [50, 90, 'the girl to be married', 'daughter'],
         'chorus girl': [92, 68, 'a girl from the music hall', 'sweetheart'],
       },
-      eras: [
-        [1300, ['child', 'young person'], 'gyrle', 'Village feast days: children everywhere.', ['rogue', 'servant'],
-          [['peasant', 'pupil'], 'Village priests teach the farmers\' children their letters.'], 'The sheriff hangs the thieves, and serfs run from their lords.'],
-        [1400, ['beggar', 'boy'], 'girle', 'Famine roads, and boys sent out to work.', ['servant', 'peasant'],
-          [['infant', 'pupil'], 'Nursemaids and their charges.'], 'After the plague, nobody will serve for the old wages, and lords fear the peasants.'],
-        [1500, ['young person', 'pupil'], 'gerle', 'Grammar schools open their doors.', ['beggar', 'orphan'],
-          [['servant', 'boy'], 'Pages and serving lads in the great hall.'], 'Poor laws drive vagrants and foundlings from the parish.'],
-        [1600, ['servant', 'young woman'], 'girle', 'Great houses fill with staff.', ['peasant', 'playmate'],
-          [['pupil', 'child'], 'Charity schools for poor children.'], 'Courtiers sneer at country folk, and Puritans at games.'],
-        [1700, ['flirt', 'daughter'], 'girl', 'Masquerades, and marriages arranged.', ['boy', 'maiden'],
-          [['servant', 'child'], 'Foundling hospitals and their little workers.'], 'Boys are breeched at seven, and old maids are mocked.'],
-        [1800, ['shopgirl', 'sweetheart'], 'girl', 'Department stores and love letters.', ['servant', 'harlot'],
-          [['pupil', 'infant'], 'Nurseries and schoolrooms in every house.'], 'Polite society pretends the servants, and the streetwalkers, aren\'t there.'],
-        [1900, ['young woman', 'friends'], 'girl', 'Dance halls and nights out.', ['flirt', 'maiden'],
-          [['child', 'pupil'], 'School for every child, by law.'], 'Respectable ladies frown on coquettes, and spinsters are old hat.'],
-        [2000, ['young woman', 'daughter'], 'girl', 'Birthday cards and graduations.', ['servant', 'harlot'],
-          [['child', 'infant'], 'A baby boom: prams in every street.'], 'Nobody has servants any more, and nobody is called a fallen woman.'],
-      ],
+      eras: [[1300, 'gyrle'], [1400, 'girle'], [1500, 'gerle'], [1600, 'girle'], [1700, 'girl'], [1800, 'girl'], [1900, 'girl'], [2000, 'girl']],
+      worlds: {
+        'young woman': [
+          ['Village feast days: children everywhere.', ['child', 'young person'], ['rogue', 'servant'], 'The sheriff hangs the thieves, and serfs run from their lords.'],
+          ['Famine roads, and boys sent out to work.', ['beggar', 'boy'], ['servant', 'peasant'], 'After the plague, nobody will serve for the old wages, and lords fear the peasants.'],
+          ['Grammar schools open their doors.', ['young person', 'pupil'], ['beggar', 'orphan'], 'Poor laws drive vagrants and foundlings from the parish.'],
+          ['Great houses fill with staff.', ['servant', 'young woman'], ['peasant', 'playmate'], 'Courtiers sneer at country folk, and Puritans at games.'],
+          ['Masquerades, and marriages arranged.', ['flirt', 'daughter'], ['boy', 'maiden'], 'Boys are breeched at seven, and old maids are mocked.'],
+          ['Department stores and love letters.', ['shopgirl', 'sweetheart'], ['servant', 'harlot'], 'Polite society pretends the servants, and the streetwalkers, aren\'t there.'],
+          ['Dance halls and nights out.', ['young woman', 'friends'], ['flirt', 'maiden'], 'Respectable ladies frown on coquettes, and spinsters are old hat.'],
+          ['Birthday cards and graduations.', ['young woman', 'daughter'], ['servant', 'harlot'], 'Nobody has servants any more, and nobody is called a fallen woman.'],
+        ],
+        child: [
+          ['Village feast days: children everywhere.', ['child', 'infant'], ['rogue', 'servant'], 'Thieves and drudges are kept out.'],
+          ['Games in the lanes.', ['child', 'playmate'], ['servant', 'maiden'], 'Nobody works, and nobody weds.'],
+          ['Boys and girls together at play.', ['child', 'boy'], ['beggar', 'sweetheart'], 'No beggars, and no courting.'],
+          ['Nurseries in the great houses.', ['child', 'infant'], ['harlot', 'servant'], 'The streets and the kitchens are hidden.'],
+          ['Foundling hospitals.', ['child', 'orphan'], ['flirt', 'sweetheart'], 'Flirting is frowned on.'],
+          ['Nurseries and schoolrooms in every house.', ['child', 'infant'], ['shopgirl', 'maiden'], 'Shop work and spinsters are out.'],
+          ['School for every child, by law.', ['child', 'playmate'], ['flirt', 'young woman'], 'Grown-up girls are a worry.'],
+          ['A baby boom: prams in every street.', ['child', 'infant'], ['young woman', 'friends'], 'Nights out are over.'],
+        ],
+        servant: [
+          ['Serfs bound to the manor.', ['servant', 'peasant'], ['pupil', 'playmate'], 'No schooling, and no play.'],
+          ['Hired hands on the roads.', ['servant', 'beggar'], ['pupil', 'infant'], 'No time for letters or babies.'],
+          ['Pages and serving lads in the great hall.', ['servant', 'boy'], ['playmate', 'maiden'], 'Play and courtship wait.'],
+          ['Great houses fill with staff.', ['servant', 'young person'], ['pupil', 'infant'], 'Schools and nurseries are shut.'],
+          ['Workhouse children put to work.', ['servant', 'orphan'], ['flirt', 'sweetheart'], 'Romance is idleness.'],
+          ['Below stairs and behind counters.', ['servant', 'shopgirl'], ['pupil', 'sweetheart'], 'No lessons, and no love letters.'],
+          ['Maids in every middle-class home.', ['servant', 'young woman'], ['friends', 'flirt'], 'No nights out on a maid\'s wage.'],
+          ['Au pairs and waitresses.', ['servant', 'young person'], ['friends', 'pupil'], 'Work comes first.'],
+        ],
+        pupil: [
+          ['Priests teach the farmers\' children their letters.', ['pupil', 'child'], ['rogue', 'beggar'], 'Truants and beggars are shamed.'],
+          ['Nursemaids teach their charges.', ['pupil', 'infant'], ['servant', 'rogue'], 'Drudges and rascals are kept away.'],
+          ['Grammar schools open their doors.', ['pupil', 'young person'], ['beggar', 'servant'], 'Learning, not labour.'],
+          ['Charity schools for poor children.', ['pupil', 'child'], ['harlot', 'peasant'], 'The street and the field are no place for a girl.'],
+          ['Young ladies\' academies.', ['pupil', 'daughter'], ['flirt', 'servant'], 'Flirts and drudges are frowned on.'],
+          ['Nurseries and schoolrooms.', ['pupil', 'infant'], ['shopgirl', 'servant'], 'Work can wait.'],
+          ['School for every child, by law.', ['pupil', 'child'], ['flirt', 'servant'], 'Lessons first.'],
+          ['Exams and school uniforms.', ['pupil', 'young person'], ['servant', 'harlot'], 'Nobody is in service now.'],
+        ],
+      },
       history: ['child', 'young person', 'young person', 'young woman', 'young woman', 'young woman', 'young woman', 'young woman'],
     },
     {
@@ -335,24 +432,49 @@
         game: [68, 58, 'meat of the hare and boar', 'venison'],
         carcass: [96, 48, 'the meat hung in the larder', 'flesh'],
       },
-      eras: [
-        [1000, ['food', 'provisions'], 'mete', 'A hard winter; stores run low.', ['kernel', 'bait'],
-          [['bread', 'dish'], 'The bakehouse and the cooking pot.'], 'Famine: nobody bothers with nutshells, or wastes food on the hook.'],
-        [1100, ['feast', 'food'], 'mete', 'Norman lords and their banquets.', ['fodder', 'portion'],
-          [['kernel', 'provisions'], 'Nut harvests stored for winter.'], 'Norman lords leave the cattle\'s feed, and the rationing, to the English.'],
-        [1200, ['meal', 'nourishment'], 'mete', 'Monasteries ring the bell for supper.', ['feast', 'prey'],
-          [['bread', 'substance'], 'Theologians debate the substance of the bread.'], 'The abbot preaches against gluttony, and against the hunt.'],
-        [1300, ['fish', 'pulp'], 'mete', 'Fast days, and orchards in the cloister.', ['bread', 'marrow'],
-          [['food', 'meal'], 'Market days in the growing towns.'], 'Bakers in the pillory for short loaves, butchers for bad bones.'],
-        [1400, ['venison', 'body'], 'mete', 'Royal hunts, and preachers on the weakness of the body.', ['substance', 'dish'],
-          [['kernel', 'pulp'], 'Orchards and nut groves of the monasteries.'], 'Lollards mock the schoolmen\'s "substance", and fancy dishes are banned by law.'],
-        [1500, ['flesh', 'body'], 'meate', 'Butchers organise into guilds.', ['fish', 'pulp'],
-          [['food', 'dish'], 'Cookery books in print.'], 'The new church scorns fast days, and sells off the monks\' orchards.'],
-        [1600, ['flesh', 'kernel'], 'meat', 'Roast beef of old England, and nuts from the colonies.', ['venison', 'prey'],
-          [['substance', 'bread'], 'Puritans preach plain bread and plain truth.'], 'The king\'s deer, and his falcons\' quarry, are not for the likes of you.'],
-        [1700, ['flesh', 'gist'], 'meat', 'Pamphleteers argue the heart of every matter.', ['food', 'nourishment'],
-          [['substance', 'kernel'], 'Get to the heart of it: nutshells and pamphlets.'], 'Dictionary makers frown at loose old ways of speaking, and the sermons empty.'],
-      ],
+      eras: [[1000, 'mete'], [1100, 'mete'], [1200, 'mete'], [1300, 'mete'], [1400, 'mete'], [1500, 'meate'], [1600, 'meat'], [1700, 'meat']],
+      worlds: {
+        flesh: [
+          ['A hard winter; stores run low.', ['food', 'provisions'], ['kernel', 'bait'], 'Famine: nobody bothers with nutshells, or wastes food on the hook.'],
+          ['Norman lords and their banquets.', ['feast', 'food'], ['fodder', 'portion'], 'Norman lords leave the cattle\'s feed, and the rationing, to the English.'],
+          ['Monasteries ring the bell for supper.', ['meal', 'nourishment'], ['feast', 'prey'], 'The abbot preaches against gluttony, and against the hunt.'],
+          ['Fast days, and orchards in the cloister.', ['fish', 'pulp'], ['bread', 'marrow'], 'Bakers in the pillory for short loaves, butchers for bad bones.'],
+          ['Royal hunts, and preachers on the weakness of the body.', ['venison', 'body'], ['substance', 'dish'], 'Lollards mock the schoolmen\'s "substance", and fancy dishes are banned by law.'],
+          ['Butchers organise into guilds.', ['flesh', 'body'], ['fish', 'pulp'], 'The new church scorns fast days, and sells off the monks\' orchards.'],
+          ['Roast beef of old England, and nuts from the colonies.', ['flesh', 'kernel'], ['venison', 'prey'], 'The king\'s deer, and his falcons\' quarry, are not for the likes of you.'],
+          ['Pamphleteers argue the heart of every matter.', ['flesh', 'gist'], ['food', 'nourishment'], 'Dictionary makers frown at loose old ways of speaking, and the sermons empty.'],
+        ],
+        food: [
+          ['A hard winter; stores run low.', ['food', 'provisions'], ['kernel', 'bait'], 'Nobody wastes food on nuts or hooks.'],
+          ['Norman banquets.', ['food', 'feast'], ['fodder', 'prey'], 'Cattle feed and the hunt are for others.'],
+          ['The monastery bell for supper.', ['meal', 'food'], ['flesh', 'body'], 'The flesh is mortified.'],
+          ['Market days in the growing towns.', ['food', 'dish'], ['flesh', 'pulp'], 'Butchers and fruiterers are fined.'],
+          ['Bread and ale for the harvesters.', ['food', 'bread'], ['venison', 'flesh'], 'Meat is for lords.'],
+          ['Cookery books in print.', ['food', 'dish'], ['flesh', 'body'], 'Nobody talks of flesh at table.'],
+          ['Meat and drink at every inn.', ['food', 'meal'], ['flesh', 'venison'], 'Butchery is vulgar.'],
+          ['Ship\'s stores for the voyage.', ['food', 'provisions'], ['flesh', 'gist'], 'No butchers aboard, and no arguments.'],
+        ],
+        kernel: [
+          ['Nuts stored for winter.', ['kernel', 'provisions'], ['flesh', 'feast'], 'No feasting this year.'],
+          ['Nut harvests.', ['kernel', 'food'], ['flesh', 'fodder'], 'The herds are thin.'],
+          ['Grain and nuts in the barns.', ['kernel', 'bread'], ['flesh', 'fish'], 'Fast days, every day.'],
+          ['Orchards in the cloister.', ['kernel', 'pulp'], ['flesh', 'fish'], 'The monks eat no flesh.'],
+          ['Orchards and nut groves.', ['kernel', 'pulp'], ['venison', 'flesh'], 'The hunt is forbidden.'],
+          ['Physicians on marrow and seed.', ['kernel', 'marrow'], ['flesh', 'fish'], 'Meat and fish are blamed for fevers.'],
+          ['Nuts from the colonies.', ['kernel', 'pulp'], ['flesh', 'venison'], 'Roast beef is out of fashion.'],
+          ['Botanists split seeds.', ['kernel', 'marrow'], ['flesh', 'food'], 'Butchers and cooks are behind the times.'],
+        ],
+        substance: [
+          ['Sermons on bread for the soul.', ['nourishment', 'food'], ['kernel', 'fodder'], 'Husks and cattle feed are for beasts.'],
+          ['Scholars ask what things are made of.', ['nourishment', 'substance'], ['feast', 'flesh'], 'Gluttony is a sin.'],
+          ['Theologians debate the substance of the bread.', ['substance', 'bread'], ['flesh', 'feast'], 'The flesh is weak.'],
+          ['Schoolmen dispute.', ['substance', 'nourishment'], ['fish', 'flesh'], 'Fish and flesh are for the kitchen.'],
+          ['Preachers on the body and the soul.', ['substance', 'body'], ['venison', 'dish'], 'Hunting and fine dishes are vanity.'],
+          ['Printers spread the argument.', ['substance', 'nourishment'], ['flesh', 'fish'], 'Nobody argues about dinner.'],
+          ['Puritans preach plain bread and plain truth.', ['substance', 'bread'], ['venison', 'flesh'], 'Feasting is popish.'],
+          ['Pamphleteers get to the heart of it.', ['substance', 'gist'], ['flesh', 'food'], 'Mere food is beneath argument.'],
+        ],
+      },
       history: ['food', 'food', 'meal', 'fish', 'fish', 'flesh', 'flesh', 'flesh'],
     },
   ];
@@ -388,9 +510,9 @@
     const g = {
       levelIndex, era: 0, x: start.x, y: start.y, r: level.breadth, speakers: START_SPEAKERS,
       trail: [{ x: start.x, y: start.y, r: level.breadth }], log: [], over: false, outcome: null,
-      seen: [], fads: {}, goal: null,
+      seen: [], fads: {}, goal: null, world: level.target, visits: {},
     };
-    g.want = choose(g);
+    offer(g);
     look(g);
     return g;
   }
@@ -406,39 +528,49 @@
 
   const levelOf = (g) => LEVELS[g.levelIndex];
   const eraOf = (g) => levelOf(g).eras[Math.min(g.era, levelOf(g).eras.length - 1)];
-  // What this century wants, and its clue. Each century wants one of two
-  // pairs of senses: the one nearer where your word is, so the clues follow
-  // your path.
-  function choose(g) {
-    const level = levelOf(g);
-    const era = eraOf(g);
-    const options = [{ senses: era[1], clue: era[3] }];
-    if (era[5]) options.push({ senses: era[5][0], clue: era[5][1] });
-    const far = (o) => o.senses.reduce((n, name) => n + dist(landmark(level, name), g), 0);
-    return options.reduce((a, b) => (far(b) < far(a) ? b : a));
+  // A world's event this century: what happens, and so what's in fashion.
+  function event(g, world) {
+    const [clue, wanted, scorned, scornClue] = levelOf(g).worlds[world][Math.min(g.era, levelOf(g).eras.length - 1)];
+    return { world, clue, wanted, scorned, scornClue };
   }
-  const wantedNow = (g) => g.want.senses;
-  const clueNow = (g) => g.want.clue;
+  // The events you can choose between this century: your world's, and one
+  // that changes history. From the real history that's the world of the
+  // other ending nearest your word; from another world, it's back to history.
+  // Once you know what you're becoming, your world is its world.
+  function offer(g) {
+    const level = levelOf(g);
+    if (g.goal) {
+      g.events = [event(g, g.goal)];
+    } else {
+      const other = g.world !== level.target ? level.target : Object.keys(level.worlds).filter((w) => w !== level.target)
+        .map((w) => ({ w, d: dist(landmark(level, w), g) })).sort((a, b) => a.d - b.d)[0].w;
+      g.events = [event(g, g.world), event(g, other)];
+    }
+    g.pick = 0;
+  }
+  const eventNow = (g) => g.events[g.pick];
+  const wantedNow = (g) => eventNow(g).wanted;
+  const clueNow = (g) => eventNow(g).clue;
 
-  // Out of fashion this century: the century's own, and fads that have had their day.
-  const scornedNow = (g) => [...(eraOf(g)[4] || []),
+  // Out of fashion this century: the event's, and fads that have had their day.
+  const scornedNow = (g) => [...eventNow(g).scorned,
     ...Object.entries(g.fads).filter(([, at]) => g.era === at + FAD_LIFE).map(([name]) => name)];
-  const scornClueNow = (g) => eraOf(g)[6];
+  const scornClueNow = (g) => eventNow(g).scornClue;
   const fadNow = (g) => Object.entries(g.fads).filter(([, at]) => g.era === at).map(([name]) => name);
   // Whether you know yet what the word means today.
   const goalKnown = (g) => !!g.goal;
 
-  // How many centuries so far you meant what the word really meant then.
-  const faithful = (g) => g.log.filter((l, i) => l.senses.includes(levelOf(g).history[i])).length;
+  // How many centuries so far you kept to history's events.
+  const faithful = (g) => g.log.filter((l) => l.kept).length;
 
   // What your journey makes of the word today: the real meaning if you've
-  // kept close to history, or else the other ending nearest where you are.
+  // mostly kept to history, or else the world you've spent longest in (the
+  // later, if two tie).
   function chooseEnding(g) {
     const level = levelOf(g);
     if (faithful(g) >= ON_COURSE) return level.target;
-    return Object.keys(level.endings).filter((name) => name !== level.target)
-      .map((name) => ({ name, d: dist(landmark(level, name), g) }))
-      .sort((a, b) => a.d - b.d)[0].name;
+    const others = g.log.map((l) => l.world).filter((w) => w !== level.target);
+    return others.reduce((best, w) => (others.filter((o) => o === w).length >= others.filter((o) => o === best).length ? w : best));
   }
 
   // Where a move may go: within REACH of where you are, on the map, and
@@ -523,19 +655,23 @@
     return dist(landmark(level, g.goal), at) <= at.r && (!max || at.r <= max);
   }
 
-  // Let a century pass with you at `move`.
+  // Let a century pass with you at `move`, and its event `move.pick` (or the
+  // one chosen already).
   function advance(g, move) {
     if (g.over) return null;
     const level = levelOf(g);
+    if (move.pick !== undefined) g.pick = move.pick;
     const p = preview(g, move);
+    const ev = eventNow(g);
     Object.assign(g, p.move);
     g.speakers = clamp(g.speakers + p.delta, 0, MAX_SPEAKERS);
     g.trail.push({ ...p.move });
     const year = eraOf(g)[0];
     g.log.push({
-      year, form: eraOf(g)[2], senses: p.senses, wanted: wantedNow(g), clue: clueNow(g), scorned: scornedNow(g),
-      delta: p.delta, speakers: g.speakers, at: { ...p.move },
+      year, form: eraOf(g)[1], senses: p.senses, wanted: wantedNow(g), clue: clueNow(g), scorned: scornedNow(g),
+      delta: p.delta, speakers: g.speakers, at: { ...p.move }, world: ev.world, kept: ev.world === level.target, pick: g.pick,
     });
+    g.world = ev.world;
 
     // Fads sprout next to the senses you carried.
     g.era++;
@@ -546,9 +682,9 @@
       }
     }
     g.log[g.log.length - 1].sprouted = sprouted;
-    g.log[g.log.length - 1].faithful = p.senses.includes(level.history[g.era - 1]);
+    g.log[g.log.length - 1].meant = p.senses.includes(level.history[g.era - 1]);
     if (g.era === level.eras.length - REVEAL) g.goal = chooseEnding(g);
-    if (g.era < level.eras.length) g.want = choose(g);
+    if (g.era < level.eras.length) offer(g);
     if (g.era < level.eras.length) look(g);
     if (g.speakers <= 0) {
       g.over = true;
@@ -565,11 +701,11 @@
     return g.speakers + (g.outcome === 'arrived' ? ARRIVAL_BONUS : 0);
   }
 
-  // The perfect route to an ending, played through the same rules. To the
-  // real ending, it means what the word really meant every century.
+  // The perfect route to an ending, played through the same rules: each
+  // century's move and the event chosen.
   function perfectGame(levelIndex, ending = LEVELS[levelIndex].target) {
     const g = newGame(levelIndex);
-    for (const [x, y, r] of ROUTES[LEVELS[levelIndex].id][ending]) if (!g.over) advance(g, { x, y, r });
+    for (const [x, y, r, pick] of ROUTES[LEVELS[levelIndex].id][ending]) if (!g.over) advance(g, { x, y, r, pick });
     return g;
   }
   const historyGame = (levelIndex) => perfectGame(levelIndex);
@@ -577,7 +713,7 @@
   return {
     LEVELS, REACH, SIGHT, MIN_BREADTH, MAX_BREADTH, BROADEN, NARROW, MAX_SENSES, SCORN, FAD, FAD_LIFE, REVEAL,
     ARRIVAL_BONUS, START_SPEAKERS, MAX_SPEAKERS, ON_COURSE, ROUTES, GAIN,
-    landmarks, senses, senseAt, newGame, eraOf, wantedNow, clueNow, scornedNow, scornClueNow, fadNow, goalKnown, constrain, preview, advance,
+    landmarks, senses, senseAt, newGame, eraOf, eventNow, wantedNow, clueNow, scornedNow, scornClueNow, fadNow, goalKnown, constrain, preview, advance,
     reachedTarget, bestMove, grade, score, historyGame, perfectGame, faithful, chooseEnding,
   };
 });

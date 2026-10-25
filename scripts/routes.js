@@ -3,9 +3,8 @@
 // rules or a word: `node scripts/routes.js` (a few minutes; each word runs in
 // its own process). `node scripts/routes.js nice` redoes one word.
 //
-// A route is each century's move, [x, y, breadth], made as a player could.
-// To the real ending it must mean what the word really meant every century;
-// to the others, anything goes. It searches centuries in turn, keeping the
+// A route is each century's move and event, [x, y, breadth, event], made as
+// a player could. It searches centuries in turn, keeping the
 // best few routes in every part of the map at every breadth, so it's very
 // good but not guaranteed best.
 'use strict';
@@ -19,8 +18,7 @@ const PER_BUCKET = 6; // routes kept per 10×10 square of the map and breadth
 
 function search(E, li, ending) {
   const L = E.LEVELS[li];
-  const real = ending === L.target;
-  const step = real ? 2 : 4;
+  const step = 3;
   const points = [];
   for (let x = 0; x <= 100; x += step) for (let y = 0; y <= 100; y += step) points.push([x, y]);
   for (const l of E.landmarks(L)) points.push([l.x, l.y]);
@@ -33,24 +31,26 @@ function search(E, li, ending) {
     const best = new Map();
     for (const route of routes) {
       const g = route.g;
-      for (const r of [g.r, g.r + E.BROADEN, g.r - E.NARROW]) {
-        if (r < E.MIN_BREADTH || r > E.MAX_BREADTH) continue;
-        for (const [x, y] of points) {
-          if (Math.hypot(x - g.x, y - g.y) > E.REACH) continue;
-          const p = E.preview(g, { x, y, r });
-          if (real && !p.senses.includes(L.history[i])) continue;
-          const speakers = Math.min(E.MAX_SPEAKERS, g.speakers + p.delta);
-          if (speakers <= 0) continue;
-          const key = `${x},${y},${r}|${p.senses.join(',')}`;
-          const seen = best.get(key);
-          if (!seen || seen.speakers < speakers) best.set(key, { speakers, route, move: { x, y, r } });
+      for (let pick = 0; pick < g.events.length; pick++) {
+        g.pick = pick;
+        for (const r of [g.r, g.r + E.BROADEN, g.r - E.NARROW]) {
+          if (r < E.MIN_BREADTH || r > E.MAX_BREADTH) continue;
+          for (const [x, y] of points) {
+            if (Math.hypot(x - g.x, y - g.y) > E.REACH) continue;
+            const p = E.preview(g, { x, y, r });
+            const speakers = Math.min(E.MAX_SPEAKERS, g.speakers + p.delta);
+            if (speakers <= 0) continue;
+            const key = `${x},${y},${r},${g.events[pick].world}|${p.senses.join(',')}`;
+            const seen = best.get(key);
+            if (!seen || seen.speakers < speakers) best.set(key, { speakers, route, move: { x, y, r, pick }, world: g.events[pick].world });
+          }
         }
       }
     }
     // Play the moves worth keeping, and keep the best few in every bucket.
     const buckets = new Map();
     for (const b of [...best.values()].sort((a, z) => z.speakers - a.speakers)) {
-      const k = `${Math.floor(b.move.x / 10)},${Math.floor(b.move.y / 10)},${b.move.r}`;
+      const k = `${Math.floor(b.move.x / 10)},${Math.floor(b.move.y / 10)},${b.move.r},${b.world}`;
       const n = buckets.get(k) || 0;
       if (n >= PER_BUCKET) continue;
       const g = structuredClone(b.route.g);
@@ -58,7 +58,7 @@ function search(E, li, ending) {
       if (i + 1 >= reveal && g.goal !== ending) continue;
       if (last && g.outcome !== 'arrived') continue;
       buckets.set(k, n + 1);
-      b.kept = { g, path: [...b.route.path, [b.move.x, b.move.y, b.move.r]] };
+      b.kept = { g, path: [...b.route.path, [b.move.x, b.move.y, b.move.r, b.move.pick]] };
     }
     routes = [...best.values()].filter((b) => b.kept).map((b) => b.kept);
     if (!routes.length) return null;

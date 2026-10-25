@@ -13,25 +13,20 @@ test('every word is well formed: its senses, centuries and history', () => {
     assert.ok(names.has(L.target), `${L.id}: target`);
     assert.strictEqual(L.history.length, L.eras.length, `${L.id}: a history step per century`);
     for (const h of L.history) assert.ok(names.has(h), `${L.id}: history ${h}`);
-    L.eras.forEach(([year, needed, form, clue, scorned, [alt, altClue], scornClue], i) => {
-      assert.ok(altClue && alt.length === 2, `${L.id} ${year}: a second pair it might want, with its clue`);
-      for (const n of alt) {
-        assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: ${n} exists by then`);
-        assert.ok(!scorned.includes(n), `${L.id} ${year}: ${n} isn't both wanted and out of fashion`);
-      }
-      assert.ok(Number.isInteger(year) && form && clue, `${L.id}: ${year}`);
-      assert.ok(scorned.length, `${L.id} ${year}: scorns something`);
-      assert.ok(scornClue, `${L.id} ${year}: a clue to what's out of fashion`);
-      for (const n of scorned) {
-        assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: scorned ${n} exists by then`);
-        assert.ok(!needed.includes(n), `${L.id} ${year}: ${n} isn't both wanted and scorned`);
-        assert.notStrictEqual(L.history[i], n, `${L.id} ${year}: history doesn't head for a scorned sense`);
-      }
-      for (const n of needed) {
-        assert.ok(names.has(n), `${L.id} ${year}: needs ${n}`);
-        assert.ok(E.landmarks(L, year).some((l) => l.name === n), `${L.id} ${year}: ${n} exists by then`);
-      }
-    });
+    L.eras.forEach(([year, form]) => assert.ok(Number.isInteger(year) && form, `${L.id}: ${year}`));
+    assert.deepStrictEqual(Object.keys(L.worlds).sort(), Object.keys(L.endings).sort(), `${L.id}: a world for each ending`);
+    for (const [world, events] of Object.entries(L.worlds)) {
+      assert.strictEqual(events.length, L.eras.length, `${L.id} ${world}: an event a century`);
+      events.forEach(([clue, wanted, scorned, scornClue], i) => {
+        const at = `${L.id} ${world} ${L.eras[i][0]}`;
+        const exist = new Set(E.landmarks(L, L.eras[i][0]).map((l) => l.name));
+        assert.ok(clue && scornClue, `${at}: clues`);
+        assert.ok(wanted.length === 2 && scorned.length === 2, `${at}: wants two, scorns two`);
+        for (const n of [...wanted, ...scorned]) assert.ok(exist.has(n), `${at}: ${n} exists by then`);
+        assert.ok(!wanted.some((n) => scorned.includes(n)), `${at}: nothing both wanted and out of fashion`);
+        if (world === L.target) assert.ok(!scorned.includes(L.history[i]), `${at}: history doesn't scorn what it meant`);
+      });
+    }
     for (const l of E.landmarks(L)) {
       assert.ok(l.x >= 0 && l.x <= 100 && l.y >= 0 && l.y <= 100, `${L.id}: ${l.name} on the map`);
       assert.ok(l.quote, `${L.id}: ${l.name} has a quote`);
@@ -63,13 +58,13 @@ test('every ending has a perfect route, of moves a player could make', () => {
       const route = E.ROUTES[L.id][ending];
       assert.strictEqual(route.length, L.eras.length, `${L.id} ${ending}: a move per century (run scripts/routes.js)`);
       const g = E.newGame(i);
-      route.forEach(([x, y, r], c) => {
+      route.forEach(([x, y, r, pick], c) => {
         const at = `${L.id} ${ending} ${L.eras[c][0]}`;
         assert.ok(Math.hypot(x - g.x, y - g.y) <= E.REACH, `${at}: within reach`);
         assert.ok([g.r, g.r + E.BROADEN, g.r - E.NARROW].includes(r), `${at}: same, broadened or narrowed`);
         assert.deepStrictEqual(E.constrain(g, { x, y, r }), { x, y, r }, `${at}: unclamped`);
-        const p = E.advance(g, { x, y, r });
-        if (ending === L.target) assert.ok(p.senses.includes(L.history[c]), `${at}: holds ${L.history[c]}`);
+        assert.ok(pick >= 0 && pick < g.events.length, `${at}: an event on offer`);
+        E.advance(g, { x, y, r, pick });
       });
       assert.strictEqual(g.goal, ending, `${L.id} ${ending}: leads there`);
       assert.strictEqual(g.outcome, 'arrived', `${L.id} ${ending}: arrives`);
@@ -77,21 +72,26 @@ test('every ending has a perfect route, of moves a player could make', () => {
   });
 });
 
-test('the ending depends on how closely the journey followed history', () => {
+test('the ending depends on the events you kept', () => {
   const L = E.LEVELS[0];
   const reveal = L.eras.length - E.REVEAL;
-  const true_ = E.newGame(0);
+  const kept = E.newGame(0);
   for (let i = 0; i < reveal; i++) {
-    assert.strictEqual(true_.goal, null, 'unknown until the last centuries');
-    E.advance(true_, { x: true_.x, y: true_.y, r: true_.r });
+    assert.strictEqual(kept.goal, null, 'unknown until the last centuries');
+    assert.strictEqual(E.eventNow(kept).world, L.target, 'history is on offer first');
+    E.advance(kept, { x: kept.x, y: kept.y, r: kept.r, pick: 0 });
   }
-  // Staying put on "ignorant" and "foolish" means what nice really meant only in 1300.
-  assert.strictEqual(E.faithful(true_), 1);
-  assert.notStrictEqual(true_.goal, L.target);
-  assert.strictEqual(true_.goal, 'foolish', 'the other ending nearest you');
-  const real = E.perfectGame(0);
-  assert.strictEqual(E.faithful(real), L.eras.length);
-  assert.strictEqual(real.goal, L.target);
+  assert.strictEqual(E.faithful(kept), reveal);
+  assert.strictEqual(kept.goal, L.target, 'keeping history makes the real word, wherever you are');
+  assert.strictEqual(kept.events.length, 1, 'then your world is fixed');
+
+  const changed = E.newGame(0);
+  for (let i = 0; i < reveal; i++) E.advance(changed, { x: changed.x, y: changed.y, r: changed.r, pick: i === 0 ? 1 : 0 });
+  const world = changed.log[0].world;
+  assert.notStrictEqual(world, L.target, 'changing history leads to another world');
+  assert.ok(changed.log.every((l) => l.world === world), 'and you stay there until you change it back');
+  assert.strictEqual(changed.goal, world, 'which you become');
+  assert.strictEqual(E.eventNow(changed).world, world);
 });
 
 test('fads sprout beside what you carried, pay once, then go out of fashion', () => {
@@ -215,21 +215,24 @@ test('senses appear in their century, and far ones stay unseen until you get nea
 test('the log tells you afterwards what each century wanted', () => {
   const g = E.newGame(2);
   E.advance(g, { x: g.x, y: g.y });
-  assert.deepStrictEqual(g.log[0].wanted, E.LEVELS[2].eras[0][1]);
+  assert.deepStrictEqual(g.log[0].wanted, E.LEVELS[2].worlds[E.LEVELS[2].target][0][1]);
 });
 
-test('each century wants what is nearer your word, so the clues follow your path', () => {
+test('each century offers history\'s event and one that changes it, and the one chosen sets the tastes', () => {
   const L = E.LEVELS[0];
-  const near = E.newGame(0);
-  assert.strictEqual(E.clueNow(near), L.eras[0][3]);
-  const at = (name) => E.landmarks(L).find((l) => l.name === name);
-  const far = E.newGame(0);
-  far.x = at('strange').x; far.y = at('strange').y;
-  E.advance(far, { x: far.x, y: far.y }); // 1300 passes near strange and coy
-  assert.deepStrictEqual(far.log[0].wanted, L.eras[0][1], 'chosen when the century began');
-  // 1400 begins near strange: it wants strange and delicate.
-  assert.deepStrictEqual(E.wantedNow(far), L.eras[1][5][0]);
-  assert.strictEqual(E.clueNow(far), L.eras[1][5][1]);
+  const g = E.newGame(0);
+  assert.deepStrictEqual(g.events.map((e) => e.world)[0], L.target);
+  // From where nice starts, the nearest other ending is foolish.
+  assert.strictEqual(g.events[1].world, 'foolish');
+  assert.deepStrictEqual(E.wantedNow(g), L.worlds[L.target][0][1]);
+  g.pick = 1;
+  assert.deepStrictEqual(E.wantedNow(g), L.worlds.foolish[0][1]);
+  assert.strictEqual(E.clueNow(g), L.worlds.foolish[0][0]);
+  assert.ok(E.scornedNow(g).includes(L.worlds.foolish[0][2][0]));
+  E.advance(g, { x: g.x, y: g.y, r: g.r });
+  assert.strictEqual(g.log[0].kept, false);
+  // In another world, the way out is back to history.
+  assert.deepStrictEqual(g.events.map((e) => e.world), ['foolish', L.target]);
 });
 
 test('nice starts out meaning both ignorant and foolish, as its story says', () => {
