@@ -59,7 +59,6 @@
   const level = () => E.LEVELS[game.levelIndex];
   // The answer: the perfect route to the ending you got, or to the real one.
   const answerGame = () => E.perfectGame(game.levelIndex, game.goal || level().target);
-  const GRADE_TEXT = { best: 'The best move you had.', good: 'A good move', fair: 'A fair move', poor: 'A poor move' };
   const signed = (n) => (n > 0 ? `+${n}` : String(n));
   const words = (names, bold = []) => names.flatMap((w, i) => [i ? (i === names.length - 1 ? ' and ' : ', ') : '',
     el(bold.includes(w) ? 'strong' : 'span', {}, w)]);
@@ -280,6 +279,7 @@
   // Newcomers walk in from the senses that won them (`from`, a list of points).
   function updateCrowd(losses = [], from = []) {
     for (const dot of leftBehind) { dot.classList.add('faded'); setTimeout(() => dot.remove(), 1000); }
+    for (const dot of people) dot.classList.remove('won');
     leftBehind = [];
     const n = Math.min(CROWD_MAX, Math.round(game.speakers / PER_PERSON));
     const away = losses.flatMap((l) => Array.from({ length: l.n }, () => (l.at ? near(l.at, 1.5, 4) : near(game, game.r + 1.5, game.r + 5))));
@@ -301,6 +301,7 @@
       $('crowd').append(dot);
       if (from.length) {
         const src = from[k++ % from.length];
+        if (src.won) dot.classList.add('won');
         dot.style.transition = 'none';
         moveTo(dot, [src.x, src.y]);
         getComputedStyle(dot).transform; // start the walk from the sense
@@ -387,7 +388,6 @@
   function pass() {
     if (game.over) return showEnd();
     const L = level();
-    const before = E.eraOf(game)[0];
     const hadGoal = game.goal;
     const best = E.bestMove(game);
     const p = E.advance(game, ghost);
@@ -395,7 +395,6 @@
     const entry = game.log[game.log.length - 1];
     const at = (name) => E.senseAt(game, name);
     const hit = p.senses.filter((s) => entry.wanted.includes(s));
-    const stung = p.senses.filter((s) => entry.scorned.includes(s));
     const really = L.history[game.log.length - 1];
     entry.best = Math.max(best.delta, p.delta);
     entry.grade = E.grade(p.delta, entry.best);
@@ -408,8 +407,9 @@
       if (!r.sense) continue;
       const l = at(r.sense);
       float(l.x, l.y - 2.4, signed(r.amount), r.scorned ? 'bad' : r.needed ? 'wanted' : 'plain');
-      for (let i = 0; i < Math.max(1, Math.round(r.amount / PER_PERSON)) && r.amount > 0; i++) from.push(l);
+      for (let i = 0; i < Math.max(1, Math.round(r.amount / PER_PERSON)) && r.amount > 0; i++) from.push({ x: l.x, y: l.y, won: r.needed });
     }
+    from.sort((a, b) => b.won - a.won); // those a wanted meaning won walk in first
     for (const w of entry.wanted) {
       if (!hit.includes(w)) { const l = at(w); float(l.x, l.y - 2.4, 'wanted', 'missed'); }
     }
@@ -425,18 +425,23 @@
     $('speakers-delta').classList.add('show');
 
     // What the century did, over the map until the next one.
-    const fresh = game.over ? [] : E.landmarks(L, E.eraOf(game)[0]).filter((l) => l.from > before);
+    // What the century did: each gain and loss and why, and the total.
+    const item = (cls, text) => el('span', { class: `item ${cls}` }, text);
+    const general = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' };
     $('result').hidden = false;
     $('result').replaceChildren(
-      el('span', { class: 'r-year' }, `${entry.year}: `),
-      'it wanted ', ...words(entry.wanted, hit), '. ',
-      ...(entry.scorned.length ? [el('span', { class: stung.length ? 'astray' : '' }, ...words(entry.scorned, stung), ' went out of fashion. ')] : []),
-      el('strong', { class: p.delta >= 0 ? 'pos' : 'neg' }, `${signed(p.delta)} speakers. `),
-      el('span', { class: `grade ${entry.grade}` }, entry.grade === 'best' ? `${GRADE_TEXT.best} ` : `${GRADE_TEXT[entry.grade]}: the best was ${signed(entry.best)}. `),
-      el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
-      ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
-      ...(fresh.length ? [el('span', {}, ` A new meaning appears${fresh.some((l) => game.seen.includes(l.name)) ? `: ${fresh.filter((l) => game.seen.includes(l.name)).map((l) => l.name).join(', ')}` : ' somewhere'}.`)] : []),
-      ...(!hadGoal && game.goal ? [el('span', { class: 'reveal' }, ` ★ You're becoming ${game.goal}.`)] : []));
+      el('span', { class: 'tally' },
+        el('span', { class: 'r-year' }, String(entry.year)),
+        ...p.reasons.map((r) => (r.sense
+          ? item(r.scorned ? 'bad' : r.needed ? 'wanted' : r.fad ? 'fad' : 'plain',
+            `${signed(r.amount)} ${r.sense}${r.scorned ? ', out of fashion' : r.needed ? ', wanted' : r.fad ? ', fad' : ''}`)
+          : item('bad', `${signed(r.amount)} ${general[r.text] || 'too vague'}`))),
+        ...entry.wanted.filter((w) => !hit.includes(w)).map((w) => item('missed', `missed ${w}, wanted (${signed(E.GAIN.needed)})`)),
+        el('strong', { class: `item total ${p.delta >= 0 ? 'pos' : 'neg'}` }, `= ${signed(p.delta)}`)),
+      el('span', { class: 'notes' },
+        el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
+        ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
+        ...(!hadGoal && game.goal ? [el('span', { class: 'reveal' }, ` ★ You're becoming ${game.goal}.`)] : [])));
     ghost = { x: game.x, y: game.y, r: game.r };
     render();
     updateCrowd(losses, from);
