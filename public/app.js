@@ -18,6 +18,7 @@
   let newcomers = 0; // how many of the crowd, at its end, arrived last century
   let replay = null; // { step, timer } while the replay plays
   let revealed = false; // whether the player has asked to see the best route
+  let shuffledFor = null; // the century whose events were last put in order
 
   function svg(tag, attrs = {}, text) {
     const node = document.createElementNS(SVG, tag);
@@ -77,6 +78,7 @@
     $('floats').replaceChildren();
     people = [];
     leftBehind = [];
+    shuffledFor = null;
     newcomers = 0;
     revealed = false;
     $('menu').hidden = true;
@@ -387,17 +389,19 @@
     $('drift').hidden = game.over;
     $('over').hidden = !game.over;
     // What happens this century: your world's event, or one that changes
-    // history. The chosen one shows its clues; tap the other to choose it.
+    // history. Nothing says which is which: they come in an order of their
+    // own, the first chosen to start with. The chosen one shows its clues;
+    // tap the other to choose it.
     $('next-label').replaceChildren('The ', el('span', { class: 'decade' }, `${era[0]}s`));
-    const tag = (ev, i) => (game.events.length === 1 ? (ev.world === L.target ? 'History' : 'Your world')
-      : ev.world === L.target ? (game.world === L.target ? 'As history had it' : 'Back to history')
-        : (game.world === L.target ? 'Change history' : 'Your world'));
-    $('events').replaceChildren(...(game.over ? [] : game.events.map((ev, i) => el('button', {
-      type: 'button', role: 'radio', 'aria-checked': String(i === game.pick),
-      class: `event${i === game.pick ? ' chosen' : ''}${ev.world === L.target ? ' history' : ''}`,
-      onclick: () => { game.pick = i; render(); },
-    }, el('span', { class: 'ev-tag' }, tag(ev, i)), el('span', { class: 'clue' }, ev.clue),
-    ...(i === game.pick ? [el('span', { class: 'scorn-clue' }, ev.scornClue)] : [])))));
+    const order = game.events.length > 1 && seeded(`${L.id}${era[0]}${game.events.map((e) => e.world)}`)() < 0.5 ? [1, 0] : game.events.map((e, i) => i);
+    if (shuffledFor !== game.era) { shuffledFor = game.era; game.pick = order[0]; }
+    $('events').replaceChildren(...(game.over ? [] : order.map((i) => {
+      const ev = game.events[i];
+      return el('button', {
+        type: 'button', role: 'radio', 'aria-checked': String(i === game.pick), class: `event${i === game.pick ? ' chosen' : ''}`,
+        onclick: () => { game.pick = i; render(); },
+      }, el('span', { class: 'clue' }, ev.clue), ...(i === game.pick ? [el('span', { class: 'scorn-clue' }, ev.scornClue)] : []));
+    })));
     const goal = game.goal;
     $('tags').replaceChildren(
       ...fads.map((s) => el('span', { class: 'tag fad', title: 'A new fad' }, `✦ ${s}`)),

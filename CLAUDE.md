@@ -5,7 +5,7 @@ A game on **cheetahmoongames.com**, served at **https://etymon.cheetahmoongames.
 ## The game
 
 You are a word drifting through a thousand years of meaning: *nice* (once "foolish"), *silly* ("blessed"), *awful* ("awe-inspiring"), *girl* ("child") and *meat* ("food"). The goal is speakers. The map is meaning: landmarks are senses, and your circle is the senses you carry. Each century:
-- **Choose what happens.** Each word has a world per ending (`worlds`), the target's being real history, with an event a century: a clue, two senses wanted, two out of fashion and a clue to those. You're offered your world's event and one that changes history (from history, the world of the nearest other ending; from another world, back to history) (`offer`).
+- **Choose what happens.** Each word has a world per ending (`worlds`), the target's being real history, with an event a century: a clue, two senses wanted, two out of fashion and a clue to those. You're offered your world's event and one that changes history (from history, the world of the nearest other ending; from another world, back to history) (`offer`). The page doesn't say which is history: it shows them in an order of their own and the player finds out after the century passes.
 - **Drift** up to `REACH`, and broaden a lot (`BROADEN`) or narrow a little (`NARROW`).
 - **Speakers change** (`preview`): each sense carried wins `GAIN.plain`, or `GAIN.needed` if wanted; out of fashion costs `SCORN`. Over `MAX_SENSES` senses dilutes what you win; none costs `MEANINGLESS`; `FORGETTING` forget you anyway. **Fads** (`fads`) sprout beside senses you've carried, pay `FAD`, and go out of fashion `FAD_LIFE` centuries later. At 0 you're obsolete.
 
