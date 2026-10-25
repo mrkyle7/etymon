@@ -93,9 +93,6 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .form { font-family: Georgia, serif; font-style: italic; font-size: 30px; color: var(--you); line-height: 1; }
 .blurb { margin: 0 0 6px; color: var(--muted); font-family: Georgia, serif; font-style: italic; font-size: 13px; line-height: 1.3; }
 .speakers { margin-left: auto; color: var(--muted); font-size: 14px; white-space: nowrap; }
-.par-note { display: block; text-align: right; font-size: 12px; }
-.par-note.ahead { color: var(--good); }
-.par-note.behind { color: var(--bad); }
 .speakers strong { color: var(--text); font-size: 20px; font-variant-numeric: tabular-nums; }
 .bump { display: inline-block; margin-left: 6px; font-size: 14px; font-weight: 700; opacity: 0; pointer-events: none; }
 .bump.show { animation: bump 2.4s ease-out; }
@@ -123,7 +120,6 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .timeline .bar.best, .timeline .bar.good { background: var(--good); }
 .timeline .bar.fair { background: var(--gold); }
 .timeline .bar.poor { background: var(--bad); }
-.timeline .par { position: absolute; left: 8%; right: 8%; height: 0; border-top: 1.5px dashed var(--gold); opacity: 0.8; }
 .timeline .ghost-bar { background: var(--you); opacity: 0.5; }
 .timeline .mark { font-size: 12px; font-weight: 700; min-height: 1.2em; color: var(--you); }
 .timeline .mark.true { color: var(--good); }
@@ -164,9 +160,7 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .ghost { fill: var(--you); fill-opacity: 0.1; stroke: var(--you); stroke-width: 0.6; }
 #map .ghost.vague { stroke: var(--bad); stroke-dasharray: 1.2 0.8; }
 #map .ghost-word { fill: var(--you); font-size: 4px; font-family: Georgia, serif; font-style: italic; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 0.9px; stroke-linejoin: round; }
-#map .ghost-word .count { font-family: system-ui, sans-serif; font-style: normal; font-weight: 800; font-size: 3.6px; }
-#map .ghost-word .count.ahead { fill: var(--good); }
-#map .ghost-word .count.behind { fill: var(--bad); }
+#map .ghost-word .count { font-family: system-ui, sans-serif; font-style: normal; font-weight: 800; font-size: 3.6px; fill: var(--text); }
 #map .verdict-wanted { fill: none; stroke: var(--gold); stroke-width: 0.5; stroke-dasharray: 0.9 0.6; }
 #map .verdict-wanted.hit { stroke-dasharray: none; fill: var(--gold); fill-opacity: 0.25; }
 #map .verdict-scorned { stroke: var(--bad); stroke-width: 0.45; stroke-linecap: round; opacity: 0.7; }

@@ -57,10 +57,6 @@
   }
 
   const level = () => E.LEVELS[game.levelIndex];
-  // The real word's journey, to measure yours against as you go.
-  const reals = {};
-  const realGame = () => reals[game.levelIndex] || (reals[game.levelIndex] = E.historyGame(game.levelIndex));
-  const realSpeakers = (i) => (i ? realGame().log[i - 1].speakers : E.START_SPEAKERS);
   // The answer: the perfect route to the ending you got, or to the real one.
   const answerGame = () => E.perfectGame(game.levelIndex, game.goal || level().target);
   const GRADE_TEXT = { best: 'The best move you had.', good: 'A good move', fair: 'A fair move', poor: 'A poor move' };
@@ -207,7 +203,7 @@
       above.push(svg('circle', { class: `ghost${p.senses.length > E.MAX_SENSES ? ' vague' : ''}`, cx: at.x, cy: at.y, r: at.r }));
       if (!game.over) above.push(...breadthButtons(at));
       const label = svg('text', { class: 'ghost-word', x: wx, y: wy, 'text-anchor': 'middle' }, word);
-      label.append(svg('tspan', { class: `count ${game.speakers < realSpeakers(game.era) ? 'behind' : 'ahead'}` }, count));
+      label.append(svg('tspan', { class: 'count' }, count));
       above.push(label);
     }
     $('below').replaceChildren(...below);
@@ -325,22 +321,20 @@
 
   function renderTimeline() {
     const L = level();
-    const real = realGame();
-    const top = Math.max(200, ...game.log.map((l) => l.speakers), ...real.log.map((l) => l.speakers));
-    const tick = (i) => (game.over && !revealed ? '' : el('span', { class: 'par', style: `bottom:${(100 * realSpeakers(i)) / top}%` }));
+    const top = Math.max(200, ...game.log.map((l) => l.speakers));
     $('timeline').replaceChildren(...L.eras.map((e, i) => {
       const entry = game.log[i];
       const last = i === L.eras.length - 1;
       if (entry) {
         const hit = entry.senses.some((s) => entry.wanted.includes(s));
-        return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers (the real ${L.word} had ${realSpeakers(i + 1)}); ${entry.grade} move; really meant ${L.history[i]}` },
-          el('span', { class: 'bar-wrap' }, el('span', { class: `bar ${entry.grade}`, style: `height:${(100 * entry.speakers) / top}%` }), tick(i + 1)),
+        return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers; ${entry.grade} move; really meant ${L.history[i]}` },
+          el('span', { class: 'bar-wrap' }, el('span', { class: `bar ${entry.grade}`, style: `height:${(100 * entry.speakers) / top}%` })),
           el('span', { class: `mark ${entry.faithful ? 'true' : 'astray'}` }, entry.faithful ? '✓' : '✗'),
           el('span', { class: 'yr' }, String(e[0])));
       }
       const now = i === game.era && !game.over;
       return el('li', { class: now ? 'now' : 'later' },
-        el('span', { class: 'bar-wrap' }, now ? el('span', { class: 'bar ghost-bar', style: `height:${(100 * game.speakers) / top}%` }) : '', tick(i + 1)),
+        el('span', { class: 'bar-wrap' }, now ? el('span', { class: 'bar ghost-bar', style: `height:${(100 * game.speakers) / top}%` }) : ''),
         el('span', { class: 'mark' }, now ? '•' : last ? '★' : ''),
         el('span', { class: 'yr' }, String(e[0])));
     }));
@@ -352,11 +346,6 @@
     $('year').textContent = game.over ? 'Today' : era[0];
     $('form').textContent = game.over ? L.word : era[2];
     $('speakers').textContent = game.speakers;
-    // At the end the real word's speakers would give away the best score.
-    const par = game.over ? E.score(realGame()) - E.ARRIVAL_BONUS : realSpeakers(game.era);
-    $('par').hidden = game.over && !revealed;
-    $('par').textContent = `real ${L.word}: ${par}`;
-    $('par').className = `par-note ${game.speakers < par ? 'behind' : 'ahead'}`;
     const fads = game.over ? [] : E.fadNow(game);
     const mine = game.over ? (game.log[game.log.length - 1] || { senses: [] }).senses : meaningNow();
     $('now-chips').replaceChildren(...(mine.length
