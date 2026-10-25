@@ -15,6 +15,7 @@
   let ghost; // where you're thinking of drifting: { x, y, r }
   let people = []; // the crowd's dots, innermost first
   let leftBehind = []; // dots who left you last century, standing where they went
+  let newcomers = 0; // how many of the crowd, at its end, arrived last century
   let replay = null; // { step, timer } while the replay plays
   let revealed = false; // whether the player has asked to see the best route
 
@@ -76,6 +77,7 @@
     $('floats').replaceChildren();
     people = [];
     leftBehind = [];
+    newcomers = 0;
     revealed = false;
     $('menu').hidden = true;
     $('game').hidden = false;
@@ -273,13 +275,24 @@
   }
   const moveTo = (dot, [x, y]) => { dot.style.transform = `translate(${x}px, ${y}px)`; };
 
+  // Somewhere inside your circle near a point: where a newcomer stands, by
+  // the meaning that won them.
+  function inside(c) {
+    const [x, y] = near(c, 0.8, 2.6);
+    const d = Math.hypot(x - game.x, y - game.y);
+    const max = game.r * 0.9;
+    return d <= max ? [x, y] : [game.x + ((x - game.x) * max) / d, game.y + ((y - game.y) * max) / d];
+  }
+
   // Bring the crowd up to date. Those who leave walk off to what lost them
   // (`losses`: how many, and the sense that cost them, or none for those who
   // just forgot you) and stand there in red until the next century passes.
-  // Newcomers walk in from the senses that won them (`from`, a list of points).
+  // Newcomers walk in from the senses that won them (`from`: points, `won` if
+  // the meaning was wanted) and stand by them, gold or green, until the next
+  // century passes and they join the crowd.
   function updateCrowd(losses = [], from = []) {
     for (const dot of leftBehind) { dot.classList.add('faded'); setTimeout(() => dot.remove(), 1000); }
-    for (const dot of people) dot.classList.remove('won');
+    for (const dot of people) dot.classList.remove('won', 'gained', 'at-risk');
     leftBehind = [];
     const n = Math.min(CROWD_MAX, Math.round(game.speakers / PER_PERSON));
     const away = losses.flatMap((l) => Array.from({ length: l.n }, () => (l.at ? near(l.at, 1.5, 4) : near(game, game.r + 1.5, game.r + 5))));
@@ -295,22 +308,40 @@
       }
     }
     people.forEach((dot, i) => moveTo(dot, spot(i, game, n)));
+    const settled = people.length;
     let k = 0;
     while (people.length < n) {
       const dot = svg('circle', { class: 'person', r: 0.75 });
       $('crowd').append(dot);
       if (from.length) {
         const src = from[k++ % from.length];
-        if (src.won) dot.classList.add('won');
+        dot.classList.add(src.won ? 'won' : 'gained');
         dot.style.transition = 'none';
         moveTo(dot, [src.x, src.y]);
         getComputedStyle(dot).transform; // start the walk from the sense
         dot.style.transition = '';
         dot.style.transitionDelay = `${Math.min(k * 40, 800)}ms`;
       }
-      moveTo(dot, spot(people.length, game, n));
+      moveTo(dot, from.length ? inside(from[(k - 1) % from.length]) : spot(people.length, game, n));
       people.push(dot);
     }
+    // Newcomers last, so the settled crowd is the first to forget you.
+    newcomers = people.length - settled;
+    markRisk();
+  }
+
+  // The speakers you're sure to lose if the century passed now, by your
+  // circle's size: those who forget you anyway, and what being too vague or
+  // meaning nothing costs. They show hollow, from the edge of the crowd in.
+  function markRisk() {
+    const p = !game.over && !replay && E.preview(game, ghost);
+    const sure = p ? -p.reasons.filter((r) => !r.sense).reduce((n, r) => n + r.amount, 0) : 0;
+    const n = Math.round(sure / PER_PERSON);
+    const settled = people.length - newcomers;
+    people.forEach((dot, i) => {
+      const rank = i < settled ? settled - 1 - i : settled + (people.length - 1 - i);
+      dot.classList.toggle('at-risk', rank < n);
+    });
   }
 
   // Numbers that rise off the map where the century paid you, or cost you.
@@ -320,24 +351,21 @@
     setTimeout(() => t.remove(), 3200);
   }
 
+  // A cell per century in one line: past ones show what they did to your
+  // speakers, coloured by how good the move was, with ✓ if you meant what
+  // the word really meant; tap one to see its summary again.
   function renderTimeline() {
     const L = level();
-    const top = Math.max(200, ...game.log.map((l) => l.speakers));
     $('timeline').replaceChildren(...L.eras.map((e, i) => {
       const entry = game.log[i];
-      const last = i === L.eras.length - 1;
       if (entry) {
-        const hit = entry.senses.some((s) => entry.wanted.includes(s));
-        return el('li', { class: `done${hit ? ' hit' : ''}`, title: `${e[0]}: ${entry.speakers} speakers; ${entry.grade} move; really meant ${L.history[i]}` },
-          el('span', { class: 'bar-wrap' }, el('span', { class: `bar ${entry.grade}`, style: `height:${(100 * entry.speakers) / top}%` })),
-          el('span', { class: `mark ${entry.faithful ? 'true' : 'astray'}` }, entry.faithful ? '✓' : '✗'),
-          el('span', { class: 'yr' }, String(e[0])));
+        return el('li', { class: `done ${entry.grade}`, role: 'button', tabindex: '0',
+          title: `${e[0]}: ${signed(entry.delta)} speakers, a ${entry.grade} move; really meant ${L.history[i]}`,
+          onclick: () => showSummary(i), onkeydown: (evt) => { if (evt.key === 'Enter') showSummary(i); } },
+        signed(entry.delta), el('span', { class: `mark ${entry.faithful ? 'true' : 'astray'}` }, entry.faithful ? '✓' : '✗'));
       }
       const now = i === game.era && !game.over;
-      return el('li', { class: now ? 'now' : 'later' },
-        el('span', { class: 'bar-wrap' }, now ? el('span', { class: 'bar ghost-bar', style: `height:${(100 * game.speakers) / top}%` }) : ''),
-        el('span', { class: 'mark' }, now ? '•' : last ? '★' : ''),
-        el('span', { class: 'yr' }, String(e[0])));
+      return el('li', { class: now ? 'now' : 'later' }, String(e[0]), i === L.eras.length - 1 ? el('span', { class: 'mark' }, '★') : '');
     }));
   }
 
@@ -381,14 +409,17 @@
         mine.includes(s) ? s : `+ ${s}`)),
       ...(p.senses.length ? [] : [el('span', { class: 'chip bad' }, 'nothing at all')]),
       ...mine.filter((s) => !p.senses.includes(s)).map((s) => el('span', { class: 'chip dropped' }, s)));
+    $('game').classList.toggle('begun', game.era > 0);
     const next = L.eras[game.era + 1];
     $('pass').textContent = `Continue to ${next ? next[0] : 'today'}`;
+    markRisk();
   }
 
   function pass() {
     if (game.over) return showEnd();
     const L = level();
     const hadGoal = game.goal;
+    const seenBefore = [...game.seen];
     const best = E.bestMove(game);
     const p = E.advance(game, ghost);
     $('floats').replaceChildren();
@@ -424,29 +455,56 @@
     void $('speakers-delta').offsetWidth;
     $('speakers-delta').classList.add('show');
 
-    // What the century did, over the map until the next one.
-    // What the century did: each gain and loss and why, and the total.
-    const item = (cls, text) => el('span', { class: `item ${cls}` }, text);
-    const general = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' };
-    $('result').hidden = false;
-    $('result').replaceChildren(
-      el('span', { class: 'tally' },
-        el('span', { class: 'r-year' }, String(entry.year)),
-        ...p.reasons.map((r) => (r.sense
-          ? item(r.scorned ? 'bad' : r.needed ? 'wanted' : r.fad ? 'fad' : 'plain',
-            `${signed(r.amount)} ${r.sense}${r.scorned ? ', out of fashion' : r.needed ? ', wanted' : r.fad ? ', fad' : ''}`)
-          : item('bad', `${signed(r.amount)} ${general[r.text] || 'too vague'}`))),
-        ...entry.wanted.filter((w) => !hit.includes(w)).map((w) => item('missed', `missed ${w}, wanted (${signed(E.GAIN.needed)})`)),
-        el('strong', { class: `item total ${p.delta >= 0 ? 'pos' : 'neg'}` }, `= ${signed(p.delta)}`)),
-      el('span', { class: 'notes' },
-        el('span', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${really} ${entry.faithful ? '✓' : '✗'}`),
-        ...(entry.sprouted.length ? [el('span', { class: 'fadnote' }, ` ✦ New fad: ${entry.sprouted.join(', ')}.`)] : []),
-        ...(!hadGoal && game.goal ? [el('span', { class: 'reveal' }, ` ★ You're becoming ${game.goal}.`)] : [])));
+    // Keep what the century did, to show now and again from the timeline.
+    entry.reasons = p.reasons;
+    entry.missed = entry.wanted.filter((w) => !hit.includes(w));
+    entry.really = really;
+    entry.appeared = game.over ? [] : E.landmarks(L, E.eraOf(game)[0]).filter((l) => l.from > entry.year).map((l) => l.name);
+    entry.sighted = game.seen.filter((name) => !seenBefore.includes(name) && !entry.sprouted.includes(name));
+    entry.becoming = !hadGoal && game.goal;
+    showSummary(game.log.length - 1);
     ghost = { x: game.x, y: game.y, r: game.r };
     render();
     updateCrowd(losses, from);
     if (game.over) setTimeout(showEnd, 1800);
   }
+
+  // The summary of a century: each gain and loss and why, the total, what
+  // the word really meant, and any new ways to go.
+  function showSummary(i) {
+    const L = level();
+    const entry = game.log[i];
+    const general = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' };
+    const row = (cls, amount, what, why) => el('tr', { class: cls }, el('td', { class: 'amt' }, amount), el('td', {}, what), el('td', { class: 'why' }, why));
+    const named = entry.appeared.filter((name) => game.seen.includes(name));
+    const found = [
+      ...entry.sprouted.map((name) => el('li', { class: 'fadnote' }, `✦ ${name}, a new fad`)),
+      ...entry.sighted.map((name) => el('li', {}, `${name} comes into sight`)),
+      ...(entry.appeared.length > named.length ? [el('li', {}, 'A new meaning appears somewhere')] : []),
+      ...(entry.becoming ? [el('li', { class: 'reveal' }, `★ You're becoming ${entry.becoming}`)] : []),
+    ];
+    $('result').replaceChildren(
+      el('div', { class: 'pop-head' },
+        el('strong', {}, String(entry.year)),
+        el('strong', { class: `total ${entry.delta >= 0 ? 'pos' : 'neg'}` }, `${signed(entry.delta)} speakers`),
+        el('button', { type: 'button', class: 'quiet close', 'aria-label': 'Close', onclick: hideSummary }, '✕')),
+      el('table', { class: 'tally' }, el('tbody', {},
+        ...entry.reasons.map((r) => (r.sense
+          ? row(r.scorned ? 'bad' : r.needed ? 'wanted' : r.fad ? 'fad' : 'plain', signed(r.amount), r.sense,
+            r.scorned ? 'out of fashion' : r.needed ? 'wanted' : r.fad ? 'fad' : '')
+          : row('bad', signed(r.amount), general[r.text] || 'too vague', ''))),
+        ...entry.missed.map((w) => row('missed', `(${signed(E.GAIN.needed)})`, w, 'wanted, missed')))),
+      el('p', { class: entry.faithful ? 'true' : 'astray' }, `Really, ${L.word} meant ${entry.really} ${entry.faithful ? '✓' : '✗'}`),
+      ...(found.length ? [el('ul', { class: 'found' }, ...found)] : []));
+    // Out of the way of your circle: in whichever half of the map it isn't.
+    $('result').classList.toggle('at-top', game.y > 50);
+    $('result').hidden = false;
+  }
+  function hideSummary() { $('result').hidden = true; }
+  // A tap anywhere but the summary, or the timeline that shows it, closes it.
+  document.addEventListener('pointerdown', (evt) => {
+    if (!$('result').hidden && !evt.target.closest('#result, #timeline')) hideSummary();
+  });
 
   function showEnd() {
     const L = level();
@@ -538,6 +596,7 @@
   }
   let dragging = false;
   $('map').addEventListener('pointerdown', (evt) => {
+    hideSummary();
     if (game.over) return;
     const btn = evt.target.closest('.breadth-btn');
     if (btn) return btn.classList.contains('off') ? null : (btn.dataset.act === 'broaden' ? broaden() : narrow());
@@ -592,7 +651,7 @@
   // On phones the Now card sits above the map and the drift card is pinned
   // to the bottom: the map fits between them.
   if (window.ResizeObserver) {
-    for (const [id, name] of [['drift', '--drift'], ['now', '--now']]) {
+    for (const [id, name] of [['drift', '--drift'], ['now', '--now'], ['next', '--next']]) {
       new ResizeObserver(([e]) => $('game').style.setProperty(name, `${Math.ceil(e.target.offsetHeight)}px`)).observe($(id));
     }
   }
