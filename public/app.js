@@ -356,7 +356,7 @@
     $('next').hidden = game.over;
     $('drift').hidden = game.over;
     $('over').hidden = !game.over;
-    $('next-label').textContent = `The ${ordinalCentury(era[0])}`;
+    $('next-label').textContent = `The ${ordinalCentury(era[0])}'s tastes`;
     $('clue').textContent = E.clueNow(game);
     $('scorn-clue').textContent = E.scornClueNow(game);
     const goal = game.goal;
@@ -585,9 +585,12 @@
   $('end-again').addEventListener('click', () => { $('end').close(); start(game.levelIndex); });
   $('end-map').addEventListener('click', () => $('end').close());
 
-  // On phones the drift card is pinned to the bottom: leave room for it.
+  // On phones the Now card sits above the map and the drift card is pinned
+  // to the bottom: the map fits between them.
   if (window.ResizeObserver) {
-    new ResizeObserver(([e]) => $('game').style.setProperty('--drift', `${Math.ceil(e.target.offsetHeight)}px`)).observe($('drift'));
+    for (const [id, name] of [['drift', '--drift'], ['now', '--now']]) {
+      new ResizeObserver(([e]) => $('game').style.setProperty(name, `${Math.ceil(e.target.offsetHeight)}px`)).observe($(id));
+    }
   }
 
   renderWords();
