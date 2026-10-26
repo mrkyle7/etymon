@@ -18,7 +18,7 @@
   let newcomers = 0; // how many of the crowd, at its end, arrived last century
   let replay = null; // { step, timer } while the replay plays
   let revealed = false; // whether the player has asked to see the best route
-  let shuffledFor = null; // the century whose events were last put in order
+  let lockedFor = null; // the century whose event the player has locked in
 
   function svg(tag, attrs = {}, text) {
     const node = document.createElementNS(SVG, tag);
@@ -151,7 +151,7 @@
     $('floats').replaceChildren();
     people = [];
     leftBehind = [];
-    shuffledFor = null;
+    lockedFor = null;
     newcomers = 0;
     revealed = false;
     $('menu').hidden = true;
@@ -159,8 +159,12 @@
     $('game-word').textContent = level().word;
     const root = document.documentElement;
     if (root.requestFullscreen && !document.fullscreenElement) root.requestFullscreen().catch(() => {});
-    render();
+    // Start as close as a small screen needs: a phone's map shows about half
+    // of it, a desktop's nearly all.
+    closeUp = Math.min(WHOLE.w, Math.max(48, 0.1 * $('map').getBoundingClientRect().width + 18));
+    follow();
     updateCrowd();
+    showChoice();
   }
 
   function showMenu() {
@@ -229,7 +233,7 @@
         g.append(svg('circle', { cx: l.x, cy: l.y, r: known ? 1 : 0.7 }));
       }
       const anchor = l.x > 80 ? 'end' : l.x < 20 ? 'start' : 'middle';
-      g.append(svg('text', { x: l.x, y: l.y + 4.6, 'text-anchor': anchor }, known ? l.name : '?'));
+      g.append(svg('text', { x: l.x, y: l.y + 1 + 3.6 * zs(), 'text-anchor': anchor }, known ? l.name : '?'));
       // What you become, once you know it and can see it.
       if (game.goal && known && l.name === game.goal) g.append(svg('text', { class: 'target-star', x: l.x + 1.6, y: l.y - 1.4 }, '★'));
       above.push(g);
@@ -297,7 +301,7 @@
       const y = Math.min(101, Math.max(-1, at.y + Math.sin(a) * at.r));
       const g = svg('g', { class: `breadth-btn${pressed ? ' pressed' : ''}${off ? ' off' : ''}`, 'data-act': act, role: 'button',
         'aria-label': act === 'broaden' ? 'Broaden a lot: hold more meanings' : 'Narrow a little: hold fewer meanings' });
-      g.append(svg('circle', { cx: x, cy: y, r: 3.4 }), svg('text', { x, y: y + 1.6, 'text-anchor': 'middle' }, sign));
+      g.append(svg('circle', { cx: x, cy: y, r: 3.4 * zs() }), svg('text', { x, y: y + 1.6 * zs(), 'text-anchor': 'middle' }, sign));
       return g;
     });
   }
@@ -312,15 +316,15 @@
 
   // Where to write your word's spelling by its circle: above it, or below,
   // left or right of it, wherever it doesn't cover a meaning's label.
-  function wordSpot(word, at, senses, size = 4, also = []) {
+  function wordSpot(word, at, senses, size = 4 * zs(), also = []) {
     const taken = also.concat(senses.flatMap((l) => {
       const anchor = l.x > 80 ? 'end' : l.x < 20 ? 'start' : 'middle';
-      return [textBox(l.x, l.y + 4.6, game.seen.includes(l.name) || game.over ? l.name : '?', 3.8, anchor), [l.x - 1.2, l.y - 1.2, l.x + 1.2, l.y + 1.2]];
+      return [textBox(l.x, l.y + 1 + 3.6 * zs(), game.seen.includes(l.name) || game.over ? l.name : '?', 3.8 * zs(), anchor), [l.x - 1.2, l.y - 1.2, l.x + 1.2, l.y + 1.2]];
     }));
     const w = word.length * size * 0.55;
     const spots = [
-      [at.x, at.y - at.r - 1.2], [at.x, at.y + at.r + 4], [at.x - at.r - w / 2 - 1, at.y + 1.4], [at.x + at.r + w / 2 + 1, at.y + 1.4],
-    ].filter(([x, y]) => y > -2 && y < 103 && x - w / 2 > -4 && x + w / 2 < 104);
+      [at.x, at.y - at.r - 1.2], [at.x, at.y + at.r + size], [at.x - at.r - w / 2 - 1, at.y + size * 0.35], [at.x + at.r + w / 2 + 1, at.y + size * 0.35],
+    ].filter(([x, y]) => y > view.y + size && y < view.y + view.w - 1 && x - w / 2 > view.x && x + w / 2 < view.x + view.w);
     return spots.find(([x, y]) => !taken.some((b) => overlaps(textBox(x, y, word, size), b))) || spots[0] || [at.x, at.y];
   }
 
@@ -461,20 +465,12 @@
     $('next').hidden = game.over;
     $('drift').hidden = game.over;
     $('over').hidden = !game.over;
-    // What happens this century: your world's event, or one that changes
-    // history. Nothing says which is which: they come in an order of their
-    // own, the first chosen to start with. The chosen one shows its clues;
-    // tap the other to choose it.
+    // What happens this century, once the player has locked it in (showChoice).
     $('next-label').replaceChildren('The ', el('span', { class: 'decade' }, `${era[0]}s`));
-    const order = game.events.length > 1 && seeded(`${L.id}${era[0]}${game.events.map((e) => e.world)}`)() < 0.5 ? [1, 0] : game.events.map((e, i) => i);
-    if (shuffledFor !== game.era) { shuffledFor = game.era; game.pick = order[0]; }
-    $('events').replaceChildren(...(game.over ? [] : order.map((i) => {
-      const ev = game.events[i];
-      return el('button', {
-        type: 'button', role: 'radio', 'aria-checked': String(i === game.pick), class: `event${i === game.pick ? ' chosen' : ''}`,
-        onclick: () => { game.pick = i; render(); },
-      }, el('span', { class: 'clue' }, ev.clue), ...(i === game.pick ? [el('span', { class: 'scorn-clue' }, ev.scornClue)] : []));
-    })));
+    const ev = game.events[game.pick];
+    $('events').replaceChildren(...(game.over || lockedFor !== game.era ? []
+      : [el('div', { class: 'event chosen' }, el('span', { class: 'clue' }, ev.clue), el('span', { class: 'scorn-clue' }, ev.scornClue))]));
+    $('pass').disabled = !game.over && lockedFor !== game.era;
     const goal = game.goal;
     $('tags').replaceChildren(
       ...fads.map((s) => el('span', { class: 'tag fad', title: 'A new fad' }, `✦ ${s}`)),
@@ -504,6 +500,7 @@
 
   function pass() {
     if (game.over) return showEnd();
+    if (lockedFor !== game.era) return showChoice();
     const L = level();
     const hadGoal = game.goal;
     const seenBefore = [...game.seen];
@@ -549,16 +546,16 @@
     entry.appeared = game.over ? [] : E.landmarks(L, E.eraOf(game)[0]).filter((l) => l.from > entry.year).map((l) => l.name);
     entry.sighted = game.seen.filter((name) => !seenBefore.includes(name) && !entry.sprouted.includes(name));
     entry.becoming = !hadGoal && game.goal;
-    showSummary(game.log.length - 1);
+    showSummary(game.log.length - 1, !game.over);
     ghost = { x: game.x, y: game.y, r: game.r };
-    render();
+    follow();
     updateCrowd(losses, from);
     if (game.over) setTimeout(showEnd, 1800);
   }
 
   // The summary of a century: each gain and loss and why, the total, what
   // the word really meant, and any new ways to go.
-  function showSummary(i) {
+  function showSummary(i, flow = false) {
     const L = level();
     const entry = game.log[i];
     const general = { 'forgotten by some': 'forgotten', 'nobody knows what you mean': 'meaningless' };
@@ -574,7 +571,7 @@
       el('div', { class: 'pop-head' },
         el('strong', {}, String(entry.year)),
         el('strong', { class: `total ${entry.delta >= 0 ? 'pos' : 'neg'}` }, `${signed(entry.delta)} speakers`),
-        el('button', { type: 'button', class: 'quiet close', 'aria-label': 'Close', onclick: hideSummary }, '✕')),
+        ...(flow ? [] : [el('button', { type: 'button', class: 'quiet close', 'aria-label': 'Close', onclick: hideSummary }, '✕')])),
       el('table', { class: 'tally' }, el('tbody', {},
         ...entry.reasons.map((r) => (r.sense
           ? row(r.scorned ? 'bad' : r.needed ? 'wanted' : r.fad ? 'fad' : 'plain', signed(r.amount), r.sense,
@@ -583,15 +580,58 @@
         ...entry.missed.map((w) => row('missed', `(${signed(E.GAIN.needed)})`, w, 'wanted, missed')))),
       el('p', { class: entry.kept ? 'true' : 'astray' }, entry.kept ? 'You kept to history ✓' : 'You changed history ✗'),
       el('p', { class: 'really' }, `Really, ${L.word} meant ${entry.really}${entry.meant ? ', and so did you' : ''}.`),
-      ...(found.length ? [el('ul', { class: 'found' }, ...found)] : []));
-    // Out of the way of your circle: in whichever half of the map it isn't.
+      ...(found.length ? [el('ul', { class: 'found' }, ...found)] : []),
+      ...(flow ? [el('button', { type: 'button', class: 'primary pop-next', onclick: showChoice }, `Choose the ${E.eraOf(game)[0]}s →`)] : []));
+    openSummary(flow);
+  }
+  // Out of the way of your circle: in whichever half of the map it isn't.
+  // While the player is between centuries (`flow`), only going on closes it.
+  function openSummary(flow) {
     $('result').classList.toggle('at-top', game.y > 50);
+    $('result').classList.toggle('flow', flow);
     $('result').hidden = false;
   }
+  const summaryFlow = () => !$('result').hidden && $('result').classList.contains('flow');
+
+  // Choosing what happens: the century's two events, in an order of their own
+  // that doesn't say which is history, until the player locks one in. Once
+  // the ending is known there's only the one.
+  function showChoice() {
+    const L = level();
+    const era = E.eraOf(game);
+    const order = game.events.length > 1 && seeded(`${L.id}${era[0]}${game.events.map((e) => e.world)}`)() < 0.5 ? [1, 0] : game.events.map((e, i) => i);
+    let picked = game.events.length === 1 ? 0 : null;
+    const lock = el('button', { type: 'button', class: 'primary pop-next', onclick: () => {
+      game.pick = picked;
+      lockedFor = game.era;
+      hideSummary();
+      render();
+    } }, game.events.length === 1 ? 'Go on' : 'Lock it in');
+    lock.disabled = picked === null;
+    const cards = order.map((i) => {
+      const ev = game.events[i];
+      const card = el('button', { type: 'button', role: 'radio', 'aria-checked': String(i === picked), class: `event${i === picked ? ' chosen' : ''}`, onclick: () => {
+        if (game.events.length === 1) return;
+        picked = i;
+        cards.forEach((c, k) => { c.classList.toggle('chosen', order[k] === i); c.setAttribute('aria-checked', String(order[k] === i)); });
+        lock.disabled = false;
+      } }, el('span', { class: 'clue' }, ev.clue), el('span', { class: 'scorn-clue' }, ev.scornClue));
+      return card;
+    });
+    $('result').replaceChildren(
+      el('div', { class: 'pop-head' }, el('strong', {}, `The ${era[0]}s`)),
+      el('p', { class: 'choose-note' }, game.events.length === 1
+        ? `Your world is set: you're becoming ${game.goal}.`
+        : 'What happens? It decides which meanings this century wants, and which go out of fashion.'),
+      el('div', { class: 'events', role: 'radiogroup' }, ...cards),
+      lock);
+    openSummary(true);
+  }
   function hideSummary() { $('result').hidden = true; }
-  // A tap anywhere but the summary, or the timeline that shows it, closes it.
+  // A tap anywhere but the summary, or the timeline that shows it, closes it,
+  // unless the player is between centuries.
   document.addEventListener('pointerdown', (evt) => {
-    if (!$('result').hidden && !evt.target.closest('#result, #timeline')) hideSummary();
+    if (!$('result').hidden && !summaryFlow() && !evt.target.closest('#result, #timeline')) hideSummary();
   });
 
   function showEnd() {
@@ -653,7 +693,7 @@
     stopReplay();
     replay = { step: 0 };
     $('crowd').classList.add('away');
-    render();
+    follow();
     replay.timer = setInterval(() => {
       replay.step++;
       if (replay.step > level().eras.length) { stopReplay(); render(); return; }
@@ -665,6 +705,40 @@
     replay = null;
     $('crowd').classList.remove('away');
   }
+
+  // The camera: the part of the map that shows. Each century it centres on
+  // your word, as close as the player last zoomed (pinch, the wheel, or + and
+  // −); dragging from outside your reach looks around. The end and the replay
+  // show it all. Text keeps much the same size on screen as you zoom (--zs).
+  const WHOLE = { x: -4, y: -4, w: 108 };
+  let view = { ...WHOLE };
+  let closeUp = 56; // how wide the map shows when following your word
+  const zs = () => Math.max(0.55, view.w / WHOLE.w);
+  function setView(v) {
+    const w = Math.min(WHOLE.w, Math.max(28, v.w));
+    view = { w, x: Math.min(WHOLE.x + WHOLE.w - w, Math.max(WHOLE.x, v.x)), y: Math.min(WHOLE.y + WHOLE.w - w, Math.max(WHOLE.y, v.y)) };
+    $('map').setAttribute('viewBox', `${view.x} ${view.y} ${view.w} ${view.w}`);
+    $('map').style.setProperty('--zs', zs());
+  }
+  function follow() {
+    if (!game || game.over || replay) setView(WHOLE);
+    else setView({ w: closeUp, x: game.x - closeUp / 2, y: game.y - closeUp / 2 });
+    render();
+  }
+  // Zoom by `factor` about a point on the map (the middle if none).
+  function zoomAt(factor, at = { x: view.x + view.w / 2, y: view.y + view.w / 2 }, from = view) {
+    const w = Math.min(WHOLE.w, Math.max(28, from.w * factor));
+    setView({ w, x: at.x - ((at.x - from.x) * w) / from.w, y: at.y - ((at.y - from.y) * w) / from.w });
+    closeUp = view.w;
+    render();
+  }
+  $('zoom-in').addEventListener('click', () => zoomAt(0.75));
+  $('zoom-out').addEventListener('click', () => zoomAt(1 / 0.75));
+  $('zoom-home').addEventListener('click', follow);
+  $('map').addEventListener('wheel', (evt) => {
+    evt.preventDefault();
+    zoomAt(evt.deltaY > 0 ? 1.12 : 1 / 1.12, pointAt(evt));
+  }, { passive: false });
 
   // Tap or drag on the map to choose where to drift.
   function pointAt(evt) {
@@ -683,23 +757,52 @@
     const at = near && near.d <= 6 ? near.l : p;
     return E.constrain(game, { x: at.x, y: at.y, r: ghost.r });
   }
-  let dragging = false;
+  // A drag inside your reach chooses where to drift; one from outside it
+  // looks around (a tap there still drifts toward it); two fingers zoom.
+  const pointers = new Map(); // pointerId → { x, y } on screen
+  let gesture = null; // { kind: 'drift' | 'tap' | 'pan' | 'pinch', ... }
+  const spread = () => { const [a, b] = [...pointers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
   $('map').addEventListener('pointerdown', (evt) => {
-    hideSummary();
-    if (game.over) return;
+    if (!summaryFlow()) hideSummary();
     const btn = evt.target.closest('.breadth-btn');
-    if (btn) return btn.classList.contains('off') ? null : (btn.dataset.act === 'broaden' ? broaden() : narrow());
-    dragging = true;
+    if (btn && !game.over) return btn.classList.contains('off') ? null : (btn.dataset.act === 'broaden' ? broaden() : narrow());
     $('map').setPointerCapture(evt.pointerId);
-    ghost = target(evt);
-    render();
+    pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const mid = pointAt({ clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+      gesture = { kind: 'pinch', spread: spread(), mid, from: { ...view } };
+      return;
+    }
+    const p = pointAt(evt);
+    const inReach = !game.over && Math.hypot(p.x - game.x, p.y - game.y) <= E.REACH + 2;
+    gesture = { kind: inReach ? 'drift' : 'tap', sx: evt.clientX, sy: evt.clientY, from: { ...view } };
+    if (inReach) { ghost = target(evt); render(); }
   });
   $('map').addEventListener('pointermove', (evt) => {
-    if (!dragging || game.over) return;
-    ghost = target(evt);
-    render();
+    if (!pointers.has(evt.pointerId) || !gesture) return;
+    pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
+    if (gesture.kind === 'pinch' && pointers.size === 2) {
+      zoomAt(gesture.spread / spread(), gesture.mid, gesture.from);
+    } else if (gesture.kind === 'drift') {
+      ghost = target(evt);
+      render();
+    } else if (gesture.kind === 'tap' || gesture.kind === 'pan') {
+      const dx = evt.clientX - gesture.sx;
+      const dy = evt.clientY - gesture.sy;
+      if (gesture.kind === 'tap' && Math.hypot(dx, dy) < 6) return;
+      gesture.kind = 'pan';
+      const scale = gesture.from.w / $('map').getBoundingClientRect().width;
+      setView({ w: gesture.from.w, x: gesture.from.x - dx * scale, y: gesture.from.y - dy * scale });
+      render();
+    }
   });
-  const stop = () => { dragging = false; };
+  const stop = (evt) => {
+    if (gesture && gesture.kind === 'tap' && !game.over && evt.type === 'pointerup') { ghost = target(evt); render(); }
+    pointers.delete(evt.pointerId);
+    if (!pointers.size) gesture = null;
+    else if (gesture && gesture.kind === 'pinch') gesture = { kind: 'pan-done' };
+  };
   $('map').addEventListener('pointerup', stop);
   $('map').addEventListener('pointercancel', stop);
 

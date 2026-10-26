@@ -39,7 +39,7 @@
     </div>
     <div class="stage">
       <section class="board">
-        <svg id="map" viewBox="-4 -4 108 108" role="img" aria-label="The map of meaning. Tap a meaning to drift toward it.">
+        <svg id="map" viewBox="-4 -4 108 108" role="img" aria-label="The map of meaning. Tap a meaning to drift toward it; drag from outside your reach to look around.">
           <defs>
             <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
               <path d="M0 0L10 5L0 10z" class="arrowhead"/>
@@ -50,6 +50,11 @@
           <g id="above"></g>
           <g id="floats"></g>
         </svg>
+        <div class="map-controls">
+          <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" id="zoom-out" aria-label="Zoom out">&minus;</button>
+          <button type="button" id="zoom-home" aria-label="Back to your word">&#9678;</button>
+        </div>
         <div class="result" id="result" role="dialog" aria-live="polite" hidden></div>
       </section>
 
@@ -99,9 +104,9 @@
     <h2>Etymon</h2>
     <p class="lede">You are a word. Over a thousand years, win speakers by meaning what each century wants, and find out what you become.</p>
     <ol class="steps">
-      <li><b>1</b><span><strong>Choose what happens.</strong> One event is what really happened; the other changes history. Guess which: you find out afterwards. The event sets the century's tastes: two meanings it wants and two out of fashion, each hinted at by a clue.</span></li>
-      <li><b>2</b><span><strong>Drift.</strong> Tap the map to move your circle, as far as the dashed ring. Tap <strong>+</strong> or <strong>−</strong> on it to broaden a lot or narrow a little. What's inside is what you mean.</span></li>
-      <li><b>3</b><span><strong>Continue.</strong> The century reveals its tastes, and your speakers change.</span></li>
+      <li><b>1</b><span><strong>Choose what happens,</strong> and lock it in. One event is what really happened; the other changes history. Guess which: you find out afterwards. The event sets the century's tastes: two meanings it wants and two out of fashion, each hinted at by a clue.</span></li>
+      <li><b>2</b><span><strong>Drift.</strong> Tap the map to move your circle, as far as the dashed ring. Tap <strong>+</strong> or <strong>−</strong> on it to broaden a lot or narrow a little. What's inside is what you mean. Zoom with the buttons in the corner, a pinch or the wheel; drag from outside your reach to look around.</span></li>
+      <li><b>3</b><span><strong>Continue.</strong> See what the century did to your speakers, then choose what happens next.</span></li>
     </ol>
     <ul>
       <li>Each meaning you carry wins <strong>+3</strong>, or <strong>+30</strong> if wanted. One out of fashion costs <strong>−25</strong>.</li>
