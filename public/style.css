@@ -93,6 +93,10 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 .result p { margin: 8px 0 0; }
 .result .true { color: var(--good); }
 .result .astray { color: var(--bad); }
+.result .pop-next { width: 100%; margin-top: 10px; }
+.result .choose-note { margin: 0 0 4px; color: var(--muted); font-size: 14px; }
+.result .events .event .clue { white-space: normal; font-size: 17px; }
+.result .events .event:not(.chosen) .scorn-clue { opacity: 0.8; }
 .result .found { margin: 6px 0 0; padding: 0; list-style: none; color: var(--you); }
 .result .found .fadnote { color: var(--fad); }
 .result .found .reveal { color: var(--gold); font-weight: 700; }
@@ -168,27 +172,30 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 
 /* The map. */
 #map .sense circle { fill: var(--ink); }
-#map .sense text { fill: var(--ink); font-size: 3.8px; font-family: Georgia, serif; }
+#map .sense text { fill: var(--ink); font-size: calc(3.8px * var(--zs, 1)); font-family: Georgia, serif; }
 #map .sense.held text { text-decoration: underline; }
 #map .sense.mine text { fill: var(--you); font-weight: 700; }
 #map .sense.mine circle { fill: var(--you); }
 #map .sense.fad text { fill: var(--fad); }
-#map .sense .spark { fill: var(--fad); font-size: 4px; text-decoration: none; }
+#map .sense .spark { fill: var(--fad); font-size: calc(4px * var(--zs, 1)); text-decoration: none; }
 #map .sense.unknown circle { fill: var(--muted); opacity: 0.5; }
 #map .sense.unknown text { fill: var(--muted); opacity: 0.6; }
 #map .reach { fill: none; stroke: var(--you); stroke-opacity: 0.45; stroke-width: 0.3; stroke-dasharray: 1 1; }
 #map .now { fill: none; stroke: var(--you); stroke-opacity: 0.5; stroke-width: 0.3; }
 #map .ghost { fill: var(--you); fill-opacity: 0.1; stroke: var(--you); stroke-width: 0.6; }
 #map .ghost.vague { stroke: var(--bad); stroke-dasharray: 1.2 0.8; }
-#map .ghost-word { fill: var(--you); font-size: 4px; font-family: Georgia, serif; font-style: italic; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 0.9px; stroke-linejoin: round; }
-#map .ghost-word .count { font-family: system-ui, sans-serif; font-style: normal; font-weight: 800; font-size: 3.6px; fill: var(--text); }
+#map .ghost-word { fill: var(--you); font-size: calc(4px * var(--zs, 1)); font-family: Georgia, serif; font-style: italic; font-weight: 700; paint-order: stroke; stroke: var(--panel); stroke-width: 0.9px; stroke-linejoin: round; }
+#map .ghost-word .count { font-family: system-ui, sans-serif; font-style: normal; font-weight: 800; font-size: calc(3.6px * var(--zs, 1)); fill: var(--text); }
 #map .verdict-wanted { fill: none; stroke: var(--gold); stroke-width: 0.5; stroke-dasharray: 0.9 0.6; }
 #map .verdict-wanted.hit { stroke-dasharray: none; fill: var(--gold); fill-opacity: 0.25; }
 #map .verdict-scorned { stroke: var(--bad); stroke-width: 0.45; stroke-linecap: round; opacity: 0.7; }
 #map .verdict-scorned.stung { stroke-width: 0.8; opacity: 1; }
+/* Zoom: + and −, and back to your word, over the map's corner. */
+.map-controls { position: absolute; top: 8px; right: 8px; display: grid; gap: 4px; z-index: 3; }
+.map-controls button { width: 34px; height: 34px; padding: 0; border-radius: 8px; font-size: 18px; line-height: 1; background: rgba(43, 35, 23, 0.9); }
 #map .breadth-btn { cursor: pointer; }
 #map .breadth-btn circle { fill: var(--panel); stroke: var(--you); stroke-width: 0.5; }
-#map .breadth-btn text { fill: var(--you); font-size: 5px; font-weight: 700; font-family: system-ui, sans-serif; pointer-events: none; }
+#map .breadth-btn text { fill: var(--you); font-size: calc(5px * var(--zs, 1)); font-weight: 700; font-family: system-ui, sans-serif; pointer-events: none; }
 #map .breadth-btn.pressed circle { fill: var(--you); }
 #map .breadth-btn.pressed text { fill: var(--panel); }
 #map .breadth-btn.off { opacity: 0.3; cursor: default; }
@@ -200,11 +207,11 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .person.gone.faded { opacity: 0; }
 #map .missed-person { fill: none; stroke: var(--gold); stroke-width: 0.3; }
 #map .crowd.away { opacity: 0; }
-#map .float { font-size: 3.6px; font-weight: 800; font-family: system-ui, sans-serif; paint-order: stroke; stroke: var(--panel); stroke-width: 0.8px; animation: rise 3s ease-out forwards; pointer-events: none; }
-#map .float.wanted { fill: var(--gold); font-size: 4.4px; }
+#map .float { font-size: calc(3.6px * var(--zs, 1)); font-weight: 800; font-family: system-ui, sans-serif; paint-order: stroke; stroke: var(--panel); stroke-width: 0.8px; animation: rise 3s ease-out forwards; pointer-events: none; }
+#map .float.wanted { fill: var(--gold); font-size: calc(4.4px * var(--zs, 1)); }
 #map .float.plain { fill: var(--good); }
 #map .float.bad { fill: var(--bad); }
-#map .float.total { font-size: 7px; }
+#map .float.total { font-size: calc(7px * var(--zs, 1)); }
 #map .float.total.pos { fill: var(--good); }
 #map .float.total.neg { fill: var(--bad); }
 #map .float.missed { fill: var(--gold); font-style: italic; font-weight: 600; }
@@ -213,9 +220,9 @@ h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(40px, 9vw,
 #map .history-step { fill: var(--gold); fill-opacity: 0.04; stroke: var(--gold); stroke-opacity: 0.35; stroke-width: 0.3; stroke-dasharray: 1 1; }
 #map .history { fill: none; stroke: var(--gold); stroke-width: 0.6; stroke-dasharray: 1.5 1.2; }
 #map .replay-real { fill: var(--gold); fill-opacity: 0.1; stroke: var(--gold); stroke-width: 0.6; }
-#map .real-word { fill: var(--gold); font-size: 3.6px; font-family: Georgia, serif; font-style: italic; font-weight: 700; }
-#map .replay-year { fill: var(--text); font-size: 6px; font-weight: 800; font-family: system-ui, sans-serif; }
-#map .target-star { fill: var(--gold); font-size: 4.5px; }
+#map .real-word { fill: var(--gold); font-size: calc(3.6px * var(--zs, 1)); font-family: Georgia, serif; font-style: italic; font-weight: 700; }
+#map .replay-year { fill: var(--text); font-size: calc(6px * var(--zs, 1)); font-weight: 800; font-family: system-ui, sans-serif; }
+#map .target-star { fill: var(--gold); font-size: calc(4.5px * var(--zs, 1)); }
 #map .grid { stroke: var(--line); stroke-width: 0.15; }
 #map .arrow { stroke: var(--you); stroke-width: 0.7; }
 #map .arrowhead { fill: var(--you); }
