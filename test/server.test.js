@@ -87,3 +87,32 @@ test('installable: icons, manifest and service worker are served', async () => {
     assert.strictEqual((await fetch(`${base}/offline.html`)).status, 200);
   });
 });
+
+test('/api/record keeps a signed-in player\'s games, best scores and endings', async () => {
+  const { Records, MemoryStore } = require('../store.js');
+  const auth = {
+    player: async (req) => (req.headers.cookie === 'userjwt=ok' ? { id: 'u1', name: 'Ann' } : null),
+    loginUrl: () => 'https://cheetahmoongames.com/login',
+  };
+  const records = new Records(new MemoryStore());
+  const game = { word: 'nice', score: 420, outcome: 'arrived', goal: 'pleasant', log: [{ year: 1300, senses: ['foolish'], wanted: ['foolish', 'wanton'], delta: 23, speakers: 123, kept: true, meant: true, really: 'foolish' }] };
+  const post = (base, path, body, cookie = 'userjwt=ok') => fetch(`${base}${path}`, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  await withServer(async (base) => {
+    assert.strictEqual((await fetch(`${base}/api/record`)).status, 401, 'only for signed-in players');
+    assert.strictEqual((await post(base, '/api/record/games', game, '')).status, 401);
+    assert.strictEqual((await post(base, '/api/record/games', { word: 'NICE!' })).status, 400);
+    let r = await (await post(base, '/api/record/games', game)).json();
+    assert.strictEqual(r.games.length, 1);
+    assert.strictEqual(r.games[0].log[0].senses[0], 'foolish');
+    assert.deepStrictEqual(r.best, { nice: 420 });
+    assert.deepStrictEqual(r.endings, { nice: ['pleasant'] });
+    r = await (await post(base, '/api/record/merge', { best: { nice: 380, silly: 200 }, endings: { nice: ['foolish'] } })).json();
+    assert.deepStrictEqual(r.best, { nice: 420, silly: 200 });
+    assert.deepStrictEqual(r.endings.nice, ['pleasant', 'foolish']);
+    const got = await (await fetch(`${base}/api/record`, { headers: { cookie: 'userjwt=ok' } })).json();
+    assert.deepStrictEqual(got, r);
+  }, { auth, records });
+  await withServer(async (base) => {
+    assert.strictEqual((await fetch(`${base}/api/record`, { headers: { cookie: 'userjwt=ok' } })).status, 503, 'not configured without a bucket');
+  }, { auth, records: null });
+});

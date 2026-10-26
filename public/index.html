@@ -24,7 +24,10 @@
       <h1>Etymon</h1>
       <p class="tagline">You are a word. Drift through a thousand years of meaning, and find out what you become.</p>
       <div class="word-cards" id="words"></div>
-      <button type="button" class="link" id="rules-btn">How to play</button>
+      <p class="menu-links">
+        <button type="button" class="link" id="history-btn">Your games</button>
+        <button type="button" class="link" id="rules-btn">How to play</button>
+      </p>
     </main>
   </div>
 
@@ -85,6 +88,12 @@
       </aside>
     </div>
   </div>
+
+  <dialog id="history">
+    <h2>Your games</h2>
+    <ul class="history-list" id="history-list"></ul>
+    <form method="dialog"><button class="primary">Close</button></form>
+  </dialog>
 
   <dialog id="rules">
     <h2>Etymon</h2>

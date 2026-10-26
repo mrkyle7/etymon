@@ -58,6 +58,79 @@
     return found[id];
   }
 
+  // A signed-in player's record is kept on the server, so it isn't lost with
+  // the browser's storage and follows them between devices: best scores,
+  // endings found and every game played. The browser keeps its own copy of
+  // the scores and endings, for players who aren't signed in; on loading, the
+  // two are merged both ways. `account` is 'in' (with `record`), 'out', or
+  // 'off' if the server isn't keeping records.
+  let account = 'off';
+  let record = null;
+  let loginUrl = 'https://cheetahmoongames.com/login';
+  function keepLocally(r) {
+    const b = stored(BEST_KEY);
+    for (const [id, score] of Object.entries(r.best)) if (!(b[id] >= score)) b[id] = score;
+    store(BEST_KEY, b);
+    const found = stored(ENDINGS_KEY);
+    for (const [id, ends] of Object.entries(r.endings)) found[id] = [...new Set([...(found[id] || []), ...ends])];
+    store(ENDINGS_KEY, found);
+  }
+  async function loadRecord() {
+    try {
+      const me = await (await fetch('/api/me')).json();
+      if (me.loginUrl) loginUrl = me.loginUrl;
+      const res = await fetch('/api/record');
+      if (res.status === 401) { account = 'out'; return; }
+      if (!res.ok) return;
+      record = await res.json();
+      account = 'in';
+      const local = { best: stored(BEST_KEY), endings: stored(ENDINGS_KEY) };
+      if (Object.keys(local.best).length || Object.keys(local.endings).length) {
+        const merged = await fetch('/api/record/merge', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(local) });
+        if (merged.ok) record = await merged.json();
+      }
+      keepLocally(record);
+      if (!$('menu').hidden) renderWords();
+    } catch { /* offline: the browser's copy will do */ }
+  }
+  // Keep a finished game in the player's record.
+  async function recordGame() {
+    if (account !== 'in' || game.recorded) return;
+    game.recorded = true;
+    const L = level();
+    const body = {
+      word: L.id, score: E.score(game), outcome: game.outcome, goal: game.goal,
+      log: game.log.map((l, i) => ({
+        year: l.year, senses: l.senses, wanted: l.wanted, delta: l.delta, speakers: l.speakers, kept: l.kept, meant: l.meant, really: L.history[i],
+      })),
+    };
+    try {
+      const res = await fetch('/api/record/games', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (res.ok) { record = await res.json(); keepLocally(record); }
+    } catch { game.recorded = false; }
+  }
+
+  // Your games: every game you've played, newest first; tap one for its journey.
+  function showHistory() {
+    const games = record ? [...record.games].reverse() : [];
+    const ending = (g) => ({ arrived: `became ${g.goal}`, survived: 'survived', obsolete: 'obsolete' }[g.outcome] || g.outcome);
+    const date = (at) => new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    $('history-list').replaceChildren(...(account === 'in'
+      ? (games.length ? games.map((g) => {
+        const journey = el('table', { class: 'compare', hidden: '' },
+          el('thead', {}, el('tr', {}, el('th', {}, 'Year'), el('th', {}, 'You meant'), el('th', {}, 'History'), el('th', {}, ''))),
+          el('tbody', {}, ...g.log.map((l) => el('tr', { class: l.meant ? 'true' : 'astray' },
+            el('td', {}, String(l.year)), el('td', {}, ...(l.senses.length ? words(l.senses, l.wanted) : ['—'])),
+            el('td', {}, `${l.kept ? '✓' : '✗'} ${l.really}`), el('td', { class: l.delta >= 0 ? 'pos' : 'neg' }, signed(l.delta))))));
+        return el('li', {}, el('button', { type: 'button', class: 'history-row', onclick: () => { journey.hidden = !journey.hidden; } },
+          el('span', { class: 'w' }, g.word), el('span', {}, ending(g)), el('span', { class: 'when' }, date(g.at)), el('strong', {}, String(g.score))), journey);
+      }) : [el('li', { class: 'small' }, 'Finish a game and it will be kept here.')])
+      : account === 'out'
+        ? [el('li', {}, el('a', { href: loginUrl }, 'Sign in'), ' to keep every game you play, on any device.')]
+        : [el('li', { class: 'small' }, 'Your games can\'t be kept just now. Your best scores and endings are kept in this browser.')]));
+    $('history').showModal();
+  }
+
   const level = () => E.LEVELS[game.levelIndex];
   // The answer: the perfect route to the ending you got, or to the real one.
   const answerGame = () => E.perfectGame(game.levelIndex, game.goal || level().target);
@@ -546,6 +619,7 @@
     $('end-reveal').textContent = 'Reveal the answer';
     $('end-reveal').classList.remove('warn');
     $('end-warning').hidden = true;
+    recordGame();
     const isBest = saveBest(L.id, score);
     $('end-best').textContent = isBest ? 'A new best for this word.' : `Your best for this word: ${stored(BEST_KEY)[L.id]}.`;
     const found = game.outcome === 'arrived' ? saveEnding(L.id, goal) : (stored(ENDINGS_KEY)[L.id] || []);
@@ -652,6 +726,7 @@
   });
 
   $('rules-btn').addEventListener('click', () => $('rules').showModal());
+  $('history-btn').addEventListener('click', showHistory);
   $('help').addEventListener('click', () => $('rules').showModal());
   $('exit').addEventListener('click', showMenu);
   $('see-end').addEventListener('click', showEnd);
@@ -672,6 +747,7 @@
   }
 
   renderWords();
+  loadRecord();
   let seen = false;
   try { seen = localStorage.getItem('etymon-seen-rules') === '3'; localStorage.setItem('etymon-seen-rules', '3'); } catch { /* fine */ }
   if (!seen) $('rules').showModal();
